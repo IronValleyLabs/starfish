@@ -1,41 +1,50 @@
-import 'dotenv/config';
-import { EventBus, Event, MessageReceivedPayload } from '@starfish/shared';
-import { processWithOpenRouter } from './ai-processor';
-
-const AGENT_ID = 'core-agent';
-const bus = new EventBus(AGENT_ID);
-
-async function handleMessageReceived(event: Event): Promise<void> {
-  const payload = event.payload as MessageReceivedPayload;
-  const correlationId = event.correlationId;
-
-  try {
-    const output = await processWithOpenRouter(payload);
-    await bus.publish(
-      'action.completed',
-      {
-        conversationId: payload.conversationId,
-        result: { output },
-      },
-      correlationId
-    );
-  } catch (err) {
-    console.error('[CoreAgent] Error processing message:', err);
-    await bus.publish(
-      'action.failed',
-      {
-        conversationId: payload.conversationId,
-        error: err instanceof Error ? err.message : String(err),
-      },
-      correlationId
-    );
+import path from 'path';
+import { EventBus, ContextLoadedPayload } from '@starfish/shared';
+import { AIProcessor } from './ai-processor';
+import dotenv from 'dotenv';
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+dotenv.config();
+class CoreAgent {
+  private eventBus: EventBus;
+  private aiProcessor: AIProcessor;
+  constructor() {
+    console.log('[CoreAgent] Iniciando con OpenRouter...');
+    this.eventBus = new EventBus('core-agent-1');
+    this.aiProcessor = new AIProcessor();
+    this.setupSubscriptions();
+  }
+  private setupSubscriptions() {
+    this.eventBus.subscribe('context.loaded', async (event) => {
+      const payload = event.payload as ContextLoadedPayload;
+      console.log(
+        `[CoreAgent] Contexto cargado para ${payload.conversationId} con ${payload.history.length} mensajes`
+      );
+      try {
+        const response = await this.aiProcessor.generateResponse(
+          payload.currentMessage,
+          payload.history
+        );
+        console.log(`[CoreAgent] Respuesta generada: "${response}"`);
+        await this.eventBus.publish(
+          'action.completed',
+          {
+            conversationId: payload.conversationId,
+            result: { output: response },
+          },
+          event.correlationId
+        );
+      } catch (error: unknown) {
+        console.error('[CoreAgent] Error generando respuesta:', error);
+        await this.eventBus.publish(
+          'action.failed',
+          {
+            conversationId: payload.conversationId,
+            error: error instanceof Error ? error.message : 'Error desconocido',
+          },
+          event.correlationId
+        );
+      }
+    });
   }
 }
-
-bus.subscribe('message.received', (event) => {
-  handleMessageReceived(event).catch((err) =>
-    console.error('[CoreAgent] Unhandled error in handler:', err)
-  );
-});
-
-console.log(`[CoreAgent] ${AGENT_ID} running, listening for message.received`);
+new CoreAgent();

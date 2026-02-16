@@ -1,5 +1,5 @@
 {
-  "name": "@starfish/core",
+  "name": "@starfish/chat",
   "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {
@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "@starfish/shared": "workspace:*",
-    "openai": "^4.28.0",
+    "telegraf": "^4.15.0",
     "dotenv": "^16.4.5"
   },
   "devDependencies": {

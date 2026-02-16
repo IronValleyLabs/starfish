@@ -1,34 +1,40 @@
 import OpenAI from 'openai';
-import { MessageReceivedPayload } from '@starfish/shared';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENROUTER_API_KEY,
-  baseURL: 'https://openrouter.ai/api/v1',
-});
+export class AIProcessor {
+  private client: OpenAI;
+  private model: string;
 
-const DEFAULT_MODEL = 'openai/gpt-3.5-turbo';
-
-/**
- * Sends the user message to OpenRouter and returns the assistant reply.
- */
-export async function processWithOpenRouter(payload: MessageReceivedPayload): Promise<string> {
-  const model = process.env.OPENROUTER_MODEL ?? DEFAULT_MODEL;
-
-  const completion = await openai.chat.completions.create({
-    model,
-    messages: [
-      {
-        role: 'system',
-        content:
-          'You are a helpful assistant. Reply concisely and in the same language as the user.',
+  constructor() {
+    this.client = new OpenAI({
+      apiKey: process.env.OPENROUTER_API_KEY,
+      baseURL: 'https://openrouter.ai/api/v1',
+      defaultHeaders: {
+        'HTTP-Referer': 'https://github.com/Faunny/starfish',
+        'X-Title': 'Starfish AI Agent',
       },
-      { role: 'user', content: payload.text },
-    ],
-  });
-
-  const content = completion.choices[0]?.message?.content;
-  if (content == null) {
-    throw new Error('OpenRouter returned empty response');
+    });
+    this.model = process.env.AI_MODEL || 'anthropic/claude-3.5-sonnet';
+    console.log(`[AIProcessor] Usando modelo: ${this.model}`);
   }
-  return content;
+
+  async generateResponse(
+    currentMessage: string,
+    history: Array<{ role: string; content: string }>
+  ): Promise<string> {
+    const messages = [
+      {
+        role: 'system' as const,
+        content: 'Eres un asistente útil y amigable. Responde de forma concisa y clara.',
+      },
+      ...history.map((h) => ({ role: h.role as 'user' | 'assistant', content: h.content })),
+      { role: 'user' as const, content: currentMessage },
+    ];
+    const completion = await this.client.chat.completions.create({
+      model: this.model,
+      messages,
+      temperature: 0.7,
+      max_tokens: 500,
+    });
+    return completion.choices[0].message.content || 'Lo siento, no pude generar una respuesta.';
+  }
 }
