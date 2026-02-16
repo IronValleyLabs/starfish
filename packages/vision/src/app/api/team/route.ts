@@ -14,6 +14,12 @@ export interface TeamMember {
   role: string
   icon: string
   jobDescription?: string
+  /** Custom goals/targets (e.g. "Post 3 times per day", one per line). Editable when adding from template. */
+  goals?: string
+  /** Human-readable description of what access this agent has (e.g. "Login: x@y.com", "API keys in .env", "No bank API"). Do not store real passwords. */
+  accessNotes?: string
+  /** KPIs this agent is measured on (e.g. ROAS > 2, response time < 1h). Agent works to achieve them and reports findings to human. */
+  kpis?: string
   status: 'active' | 'paused'
   addedAt: number
   nanoCount: number
@@ -71,13 +77,13 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     )
   }
-  let body: { templateId: string; jobDescription?: string }
+  let body: { templateId: string; jobDescription?: string; goals?: string; accessNotes?: string; kpis?: string }
   try {
     body = await request.json()
   } catch {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
-  const { templateId, jobDescription } = body
+  const { templateId, jobDescription, goals, accessNotes, kpis } = body
   if (!templateId || typeof templateId !== 'string') {
     return Response.json({ error: 'templateId is required' }, { status: 400 })
   }
@@ -92,6 +98,9 @@ export async function POST(request: NextRequest) {
     role: template.name,
     icon: template.icon,
     jobDescription: typeof jobDescription === 'string' ? jobDescription : undefined,
+    goals: typeof goals === 'string' ? goals : undefined,
+    accessNotes: typeof accessNotes === 'string' ? accessNotes : undefined,
+    kpis: typeof kpis === 'string' ? kpis : undefined,
     status: 'active',
     addedAt: Date.now(),
     nanoCount: 0,
@@ -110,10 +119,8 @@ export async function POST(request: NextRequest) {
     console.error('[POST /api/team] spawn failed:', err)
     team.pop()
     await writeTeam(team)
-    return Response.json(
-      { error: 'Failed to start agent process' },
-      { status: 500 }
-    )
+    const message = err instanceof Error ? err.message : 'Failed to start agent process'
+    return Response.json({ error: message }, { status: 500 })
   }
   return Response.json(member, { status: 201 })
 }
@@ -124,7 +131,7 @@ export async function PATCH(request: NextRequest) {
   if (!id) {
     return Response.json({ error: 'id query param required' }, { status: 400 })
   }
-  let body: { jobDescription?: string; status?: 'active' | 'paused'; displayName?: string; aliases?: string[] }
+  let body: { jobDescription?: string; goals?: string; accessNotes?: string; kpis?: string; status?: 'active' | 'paused'; displayName?: string; aliases?: string[] }
   try {
     body = await request.json()
   } catch {
@@ -136,6 +143,9 @@ export async function PATCH(request: NextRequest) {
     return Response.json({ error: 'Member not found' }, { status: 404 })
   }
   if (body.jobDescription !== undefined) team[index].jobDescription = body.jobDescription
+  if (body.goals !== undefined) team[index].goals = typeof body.goals === 'string' ? body.goals : undefined
+  if (body.accessNotes !== undefined) team[index].accessNotes = typeof body.accessNotes === 'string' ? body.accessNotes : undefined
+  if (body.kpis !== undefined) team[index].kpis = typeof body.kpis === 'string' ? body.kpis : undefined
   if (body.displayName !== undefined && typeof body.displayName === 'string') team[index].displayName = body.displayName
   if (body.aliases !== undefined && Array.isArray(body.aliases)) team[index].aliases = body.aliases.filter((a): a is string => typeof a === 'string')
   if (body.status !== undefined) {

@@ -78,6 +78,9 @@ Edit `.env`. Main variables:
 | `OPENROUTER_API_KEY` | From [OpenRouter](https://openrouter.ai/keys) |
 | `OPENAI_API_KEY` | From [OpenAI](https://platform.openai.com/api-keys) |
 | `AI_MODEL` | e.g. `anthropic/claude-3.5-sonnet` |
+| **Draft LLM** (optional) | Use a cheaper model for copies, captions, emails (saves tokens on main model). |
+| `DRAFT_OPENAI_API_KEY` | e.g. your ChatGPT/OpenAI key; used only for "draft" writing tasks |
+| `DRAFT_AI_MODEL` | e.g. `gpt-4o-mini` (default) |
 | **Redis** | |
 | `REDIS_HOST` | Redis host (default `localhost`) |
 | `REDIS_PORT` | Redis port (default `6379`) |
@@ -102,7 +105,7 @@ This builds packages and starts:
 - **Memory** — conversation history (SQLite), publishes `context.loaded`
 - **Core** — intent detection + response generation (OpenRouter/OpenAI), publishes `action.completed`
 - **Chat** — Telegram/WhatsApp/Slack/Line/Google Chat; publishes `message.received`, sends replies
-- **Action** — bash commands and web search
+- **Action** — bash, web search, and **draft** (copies/captions/emails via optional Draft LLM to save tokens)
 - **Vision** — Next.js dashboard at **http://localhost:3000**
 
 ### 5. Stop
@@ -163,6 +166,27 @@ Usually means the backend could not connect to Redis. Fix Redis (see above), the
 **Installer fails on `pnpm install` (e.g. better-sqlite3)**
 
 Ensure Node 18+ is active (`node -v`). If you still see a build error, open an issue on GitHub with your OS and Node version.
+
+---
+
+## Full autonomy: what’s in place and what’s next
+
+**In place today**
+
+- **KPIs and goals** — Each agent has configurable KPIs and goals; the system prompt tells them to work towards these and report findings and recommendations to the human.
+- **Draft LLM** — Optional secondary model (e.g. ChatGPT / `gpt-4o-mini`). Set `DRAFT_OPENAI_API_KEY` and optionally `DRAFT_AI_MODEL` in `.env`. When the user asks for copies, captions, emails, or posts, the **draft** intent sends the task to this model so the main LLM is only used for reasoning; writing cost is on the draft model (often cheaper).
+- **Access notes** — Per-agent “Access & credentials” field describes what the agent can use (e.g. “Instagram login in 1Password”, “Metricool API key in .env”). The agent sees this and can tell the human what it can or cannot do.
+- **Tools** — Chat, safe bash, web search, and draft (writing). No browser or third-party APIs yet.
+
+**Missing for e.g. “Social Media Manager: here’s the Instagram account, do copies, schedule in Metricool”**
+
+1. **Posting/scheduling integrations** — No Instagram API, Metricool API, or browser automation yet. To make an agent truly autonomous for social:
+   - **Option A:** Add skills that call real APIs (Instagram Graph API, Metricool if they offer one) using credentials stored in env or a secrets store.
+   - **Option B:** Browser automation (Puppeteer/Playwright) so the agent can log in and post/schedule when the human has stored login details (prefer not storing passwords in the app; use env or 1Password CLI, etc.).
+2. **Images/videos** — No image or video generation wired in. Would require an API (DALL·E, etc.) or external tool and a “generate_creative” intent/skill.
+3. **Stored credentials per agent** — Today only “access notes” (free text). For real autonomy, you’d add a secure place (env vars, or per-agent secrets in a vault) so a skill can “post as @account” without the human pasting tokens every time.
+
+Once those are in place, you could give the Social Media Manager the Instagram account and Metricool, and say: “Here’s the account; do copies (draft model), images (future), and schedule (Metricool skill).” The agent would already use the draft model for copies and report to you; the rest is integration work.
 
 ---
 

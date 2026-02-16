@@ -32,7 +32,6 @@ class CoreAgent {
   constructor(agentId: string, systemPrompt: string, metrics: MetricsCollector) {
     this.agentId = agentId;
     this.metrics = metrics;
-    console.log(`[CoreAgent] Starting (${agentId})...`);
     this.eventBus = new EventBus(agentId);
     this.aiProcessor = new AIProcessor(systemPrompt);
     this.setupSubscriptions();
@@ -43,9 +42,6 @@ class CoreAgent {
       const target = payload.targetAgentId ?? payload.assignedAgentId ?? null;
       if (target != null && target !== this.agentId) return;
       if (target == null && miniJellyId) return;
-      console.log(
-        `[CoreAgent] Context loaded for ${payload.conversationId} (${payload.history.length} messages)`
-      );
       try {
         const { intent, params, usage: intentUsage } = await this.aiProcessor.detectIntent(
           payload.currentMessage,
@@ -59,14 +55,11 @@ class CoreAgent {
           );
           await this.metrics.addCost(this.agentId, intentCost);
         }
-        console.log(`[CoreAgent] Intent: ${intent}`);
-
         if (intent === 'response') {
           const { content, usage } = await this.aiProcessor.generateResponse(
             payload.currentMessage,
             payload.history
           );
-          console.log(`[CoreAgent] Response: "${content}"`);
           await this.metrics.incrementActions(this.agentId);
           await this.metrics.recordAction(this.agentId, 'response_generated');
           if (usage) {

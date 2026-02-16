@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import ReactMarkdown from 'react-markdown'
 import { Plus, Activity, Settings, TrendingUp, FileText, MessageSquare } from 'lucide-react'
 
 interface TeamMember {
@@ -11,6 +12,9 @@ interface TeamMember {
   role: string
   icon: string
   jobDescription?: string
+  goals?: string
+  accessNotes?: string
+  kpis?: string
   status: 'active' | 'paused'
   addedAt: number
   nanoCount: number
@@ -69,18 +73,28 @@ export default function Dashboard() {
   const [mainProcesses, setMainProcesses] = useState<Record<string, MainProcessStatus>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [redisWarning, setRedisWarning] = useState(false)
 
   const loadData = useCallback(async () => {
     const [teamRes, metricsRes, statusRes] = await Promise.all([
-      fetch('/api/team'),
-      fetch('/api/metrics'),
-      fetch('/api/status'),
+      fetch('/api/team', { cache: 'no-store' }),
+      fetch('/api/metrics', { cache: 'no-store' }),
+      fetch('/api/status', { cache: 'no-store' }),
     ])
-    if (!teamRes.ok) throw new Error('Failed to load team')
-    const teamData = await teamRes.json()
+    const teamData = await teamRes.json().catch(() => null)
+    if (!teamRes.ok || teamData == null) throw new Error('Failed to load team')
     const team: TeamMember[] = Array.isArray(teamData) ? teamData : []
-    const metrics: Record<string, Metrics> = metricsRes.ok ? await metricsRes.json() : {}
-    const statusRaw: Record<string, AgentStatus | Record<string, MainProcessStatus>> = statusRes.ok ? await statusRes.json() : {}
+    setRedisWarning(!metricsRes.ok || !statusRes.ok)
+    const metricsData: unknown = metricsRes.ok
+      ? await metricsRes.json().catch(() => ({}))
+      : {}
+    const statusData: unknown = statusRes.ok
+      ? await statusRes.json().catch(() => ({}))
+      : {}
+    const metrics: Record<string, Metrics> =
+      typeof metricsData === 'object' && metricsData !== null ? (metricsData as Record<string, Metrics>) : {}
+    const statusRaw: Record<string, AgentStatus | Record<string, MainProcessStatus>> =
+      typeof statusData === 'object' && statusData !== null ? (statusData as Record<string, AgentStatus | Record<string, MainProcessStatus>>) : {}
     const { _main, ...status } = statusRaw
     if (_main && typeof _main === 'object') setMainProcesses(_main as Record<string, MainProcessStatus>)
     setMetricsMap(metrics)
@@ -132,7 +146,7 @@ export default function Dashboard() {
                   Jellyfish Platform
                 </h1>
                 <p className="text-sm text-ocean-400">
-                  Autonomous AI that flows through your business
+                  AI agents with clear KPIs. They work to hit targets and report findings to you.
                 </p>
               </div>
             </div>
@@ -178,6 +192,11 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
+        {redisWarning && (
+          <div className="mb-6 px-4 py-3 rounded-xl bg-amber-500/20 border border-amber-500/50 text-amber-200 text-sm">
+            Redis is not reachable. Metrics and live status may be missing. Start <code className="bg-black/20 px-1 rounded">redis-server</code> or use Redis Cloud and set REDIS_HOST in .env, then restart.
+          </div>
+        )}
         {loading ? (
           <div className="text-center py-12 text-ocean-400">Loading team...</div>
         ) : error ? (
@@ -314,8 +333,14 @@ export default function Dashboard() {
                               )}
                             </div>
                             {member.jobDescription && (
-                              <p className="text-sm text-ocean-400 mb-2 line-clamp-2">
-                                {member.jobDescription}
+                              <div className="text-sm text-ocean-400 mb-2 line-clamp-3 [&_*]:inline [&_*]:text-inherit [&_strong]:font-semibold [&_a]:text-ocean-300 [&_a]:underline">
+                                <ReactMarkdown>{member.jobDescription}</ReactMarkdown>
+                              </div>
+                            )}
+                            {member.kpis && (
+                              <p className="text-xs text-amber-200/90 mb-2 font-medium">
+                                KPIs: {member.kpis.split(/\r?\n/).filter(Boolean).slice(0, 2).join(' · ')}
+                                {member.kpis.split(/\r?\n/).filter(Boolean).length > 2 && ' …'}
                               </p>
                             )}
                             <p className="text-sm text-ocean-500 mb-3">

@@ -2,7 +2,106 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Save, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, Save, Eye, EyeOff, User } from 'lucide-react'
+
+function MyHumanSection() {
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  useEffect(() => {
+    fetch('/api/human')
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error('Failed to load'))))
+      .then((data: { name?: string; description?: string }) => {
+        setName(data.name ?? '')
+        setDescription(data.description ?? '')
+      })
+      .catch(() => setMsg({ type: 'error', text: 'Could not load My human' }))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const handleSave = async () => {
+    setMsg(null)
+    setSaving(true)
+    try {
+      const res = await fetch('/api/human', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), description: description.trim() }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setMsg({ type: 'success', text: 'Saved. Restart Mini Jellys for agents to use the new info.' })
+      } else {
+        setMsg({ type: 'error', text: data.error ?? 'Failed to save' })
+      }
+    } catch {
+      setMsg({ type: 'error', text: 'Failed to save' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="bg-ocean-900/50 backdrop-blur-sm border border-ocean-700/50 rounded-xl p-6">
+        <h2 className="text-lg font-semibold text-ocean-100 mb-4 flex items-center gap-2">
+          <User className="w-5 h-5" />
+          My human
+        </h2>
+        <p className="text-ocean-400">Loading...</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-ocean-900/50 backdrop-blur-sm border border-ocean-700/50 rounded-xl p-6">
+      <h2 className="text-lg font-semibold text-ocean-100 mb-2 flex items-center gap-2">
+        <User className="w-5 h-5" />
+        My human
+      </h2>
+      <p className="text-sm text-ocean-400 mb-4">
+        Describe who you are so your agents know who they work for (name, role, company, preferences). Used in each agent&apos;s system prompt.
+      </p>
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-ocean-300 mb-2">Name or how to address you</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full px-4 py-2 bg-ocean-800/50 border border-ocean-700 rounded-lg text-ocean-100 focus:outline-none focus:border-ocean-500"
+            placeholder="e.g. Alex, or The founder"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-ocean-300 mb-2">About you (role, company, context)</label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={4}
+            className="w-full px-4 py-2 bg-ocean-800/50 border border-ocean-700 rounded-lg text-ocean-100 text-sm focus:outline-none focus:border-ocean-500 resize-y"
+            placeholder="e.g. Founder of Acme. I care about speed and clear communication. Prefer short answers."
+          />
+        </div>
+        {msg && (
+          <p className={`text-sm ${msg.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>{msg.text}</p>
+        )}
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-2 px-4 py-2 bg-ocean-500 hover:bg-ocean-600 text-white rounded-lg text-sm disabled:opacity-50"
+        >
+          <Save className="w-4 h-4" />
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </div>
+  )
+}
 
 interface TeamMember {
   id: string
@@ -225,6 +324,9 @@ export default function Settings() {
 
       <main className="max-w-4xl mx-auto px-6 py-8">
         <div className="space-y-6">
+          {/* My human */}
+          <MyHumanSection />
+
           {/* API Configuration */}
           <div className="bg-ocean-900/50 backdrop-blur-sm border border-ocean-700/50 rounded-xl p-6">
             <h2 className="text-lg font-semibold text-ocean-100 mb-4">
@@ -449,6 +551,14 @@ export default function Settings() {
                 </div>
               </Link>
             </div>
+          </div>
+
+          {/* How agents run */}
+          <div className="bg-ocean-900/50 backdrop-blur-sm border border-ocean-700/50 rounded-xl p-6">
+            <h2 className="text-lg font-semibold text-ocean-100 mb-2">How agents run</h2>
+            <p className="text-sm text-ocean-400">
+              There are <strong className="text-ocean-300">no cron jobs</strong>. Agents react to events: when someone sends a message (Telegram, WhatsApp, etc.), the pipeline runs (Memory → Core → Action if needed → reply). They self-manage by having access to tools: chat, safe bash commands, and web search. You give them access; they act when users talk to them.
+            </p>
           </div>
 
           {/* Skills */}

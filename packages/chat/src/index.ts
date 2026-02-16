@@ -36,7 +36,6 @@ function createMessageHandler(
       await router.assignConversation(conversationId, mentioned.id);
       await router.renewConversation(conversationId);
       targetAgentId = `mini-jelly-${mentioned.id}`;
-      console.log(`[ChatAgent] Mention: ${mentioned.displayName} -> ${targetAgentId}`);
     } else {
       const assigned = await router.getAssignedAgent(conversationId);
       if (assigned) {
@@ -45,7 +44,6 @@ function createMessageHandler(
       }
     }
 
-    console.log(`[ChatAgent] ${platform} ${userId}: "${text.slice(0, 50)}..." target=${targetAgentId ?? 'default'}`);
     await eventBus.publish('message.received', {
       platform,
       userId,
@@ -138,7 +136,6 @@ async function main() {
     }
   });
 
-  console.log('[ChatAgent] Running with adapters:', adapters.map((a) => a.platform).join(', '));
 
   const shutdown = async () => {
     for (const adapter of adapters) {

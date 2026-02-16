@@ -13,7 +13,17 @@ export class EventBus {
     const redisHost = process.env.REDIS_HOST || 'localhost';
     this.publisher = new Redis({ host: redisHost });
     this.subscriber = new Redis({ host: redisHost });
-    console.log(`[EventBus] Agent ${agentId} connected to Redis at ${redisHost}`);
+
+    let redisErrorLogged = false;
+    const onRedisError = (err: Error): void => {
+      if (!redisErrorLogged) {
+        redisErrorLogged = true;
+        console.error(`[EventBus] Redis error (${redisHost}):`, err.message);
+      }
+    };
+    this.publisher.on('error', onRedisError);
+    this.subscriber.on('error', onRedisError);
+    this.publisher.on('connect', () => { redisErrorLogged = false; });
 
     this.subscriber.on('message', (channel, message) => {
       const event: Event = JSON.parse(message);
@@ -33,7 +43,6 @@ export class EventBus {
       correlationId: correlationId || randomUUID(),
       agentId: this.agentId,
     };
-    console.log(`[EventBus] Publicando evento: ${name}`, { agent: this.agentId, correlationId: event.correlationId });
     await this.publisher.publish(name, JSON.stringify(event));
   }
 
@@ -41,8 +50,7 @@ export class EventBus {
     if (!this.subscriptions.has(name)) {
       this.subscriptions.set(name, []);
       this.subscriber.subscribe(name, (err) => {
-        if (err) console.error(`Error subscribing to ${name}`, err);
-        else console.log(`[EventBus] Agente ${this.agentId} suscrito a: ${name}`);
+        if (err) console.error(`[EventBus] Subscribe error (${name}):`, err.message);
       });
     }
     this.subscriptions.get(name)!.push(handler);

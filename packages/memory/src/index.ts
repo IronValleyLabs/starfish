@@ -91,7 +91,6 @@ class MemoryAgent {
         return;
       }
 
-      console.log(`[MemoryAgent] Saving user message for ${payload.conversationId}`);
       await this.db.insert(schema.messages).values({
         conversationId: payload.conversationId,
         role: 'user',
@@ -131,7 +130,6 @@ class MemoryAgent {
     this.eventBus.subscribe('action.completed', async (event) => {
       const payload = event.payload as { conversationId?: string; result?: { output?: string }; agentId?: string };
       if (payload.result?.output && payload.conversationId) {
-        console.log(`[MemoryAgent] Saving assistant response for ${payload.conversationId}`);
         await this.db.insert(schema.messages).values({
           conversationId: payload.conversationId,
           role: 'assistant',

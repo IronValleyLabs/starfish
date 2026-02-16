@@ -12,6 +12,9 @@ interface TeamMember {
   role: string
   icon: string
   jobDescription?: string
+  goals?: string
+  accessNotes?: string
+  kpis?: string
   status: 'active' | 'paused'
   addedAt: number
   nanoCount: number
@@ -27,6 +30,9 @@ export default function MiniJellyConfig() {
   const [member, setMember] = useState<TeamMember | null>(null)
   const [loading, setLoading] = useState(true)
   const [jobDescription, setJobDescription] = useState('')
+  const [goals, setGoals] = useState('')
+  const [accessNotes, setAccessNotes] = useState('')
+  const [kpis, setKpis] = useState('')
   const [status, setStatus] = useState<'active' | 'paused'>('active')
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -39,6 +45,9 @@ export default function MiniJellyConfig() {
         setMember(m ?? null)
         if (m) {
           setJobDescription(m.jobDescription ?? '')
+          setGoals(m.goals ?? '')
+          setAccessNotes(m.accessNotes ?? '')
+          setKpis(m.kpis ?? '')
           setStatus(m.status)
         }
       })
@@ -53,7 +62,13 @@ export default function MiniJellyConfig() {
       const res = await fetch(`/api/team?id=${encodeURIComponent(member.id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobDescription: jobDescription.trim() || undefined, status }),
+        body: JSON.stringify({
+          jobDescription: jobDescription.trim() || undefined,
+          goals: goals.trim() || undefined,
+          accessNotes: accessNotes.trim() || undefined,
+          kpis: kpis.trim() || undefined,
+          status,
+        }),
       })
       if (res.ok) {
         const updated = await res.json()
@@ -136,13 +151,55 @@ export default function MiniJellyConfig() {
               Job description
             </h2>
             <p className="text-sm text-ocean-500 mb-4">
-              Describe the role or responsibilities for this agent (visible on the dashboard).
+              Describe the role or responsibilities for this agent (visible on the dashboard). <strong>Markdown</strong> supported.
             </p>
             <textarea
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
               className="w-full h-28 px-4 py-3 bg-ocean-800/50 border border-ocean-700 rounded-lg text-ocean-100 text-sm focus:outline-none focus:border-ocean-500 resize-none"
-              placeholder="e.g. Manages our Instagram and Twitter, posts 3x daily..."
+              placeholder="e.g. Manages our Instagram and Twitter..."
+            />
+          </div>
+
+          <div className="bg-ocean-900/50 backdrop-blur-sm border border-ocean-700/50 rounded-xl p-6">
+            <h2 className="text-lg font-semibold text-ocean-100 mb-2">Goals & targets</h2>
+            <p className="text-sm text-ocean-500 mb-4">
+              One goal per line. The agent will follow these (e.g. &quot;Post 3 times per day&quot;, &quot;Respond within 1 hour&quot;).
+            </p>
+            <textarea
+              value={goals}
+              onChange={(e) => setGoals(e.target.value)}
+              rows={5}
+              className="w-full px-4 py-3 bg-ocean-800/50 border border-ocean-700 rounded-lg text-ocean-100 text-sm focus:outline-none focus:border-ocean-500 resize-y"
+              placeholder="One goal per line..."
+            />
+          </div>
+
+          <div className="bg-ocean-900/50 backdrop-blur-sm border border-ocean-700/50 rounded-xl p-6">
+            <h2 className="text-lg font-semibold text-ocean-100 mb-2">KPIs</h2>
+            <p className="text-sm text-ocean-500 mb-4">
+              Metrics this agent is measured on. The agent works to achieve them and reports findings and recommendations to you.
+            </p>
+            <textarea
+              value={kpis}
+              onChange={(e) => setKpis(e.target.value)}
+              rows={3}
+              className="w-full px-4 py-3 bg-ocean-800/50 border border-ocean-700 rounded-lg text-ocean-100 text-sm focus:outline-none focus:border-ocean-500 resize-y"
+              placeholder="e.g. ROAS > 2, Response time < 1h, Report weekly to human"
+            />
+          </div>
+
+          <div className="bg-ocean-900/50 backdrop-blur-sm border border-ocean-700/50 rounded-xl p-6">
+            <h2 className="text-lg font-semibold text-ocean-100 mb-2">Access & credentials</h2>
+            <p className="text-sm text-ocean-500 mb-4">
+              Describe what this agent can use (login email, where credentials are, which APIs). Do not paste real passwords. The agent sees this to know what it can do. Today it only has web search and bash unless you add integrations.
+            </p>
+            <textarea
+              value={accessNotes}
+              onChange={(e) => setAccessNotes(e.target.value)}
+              rows={3}
+              className="w-full px-4 py-3 bg-ocean-800/50 border border-ocean-700 rounded-lg text-ocean-100 text-sm focus:outline-none focus:border-ocean-500 resize-y"
+              placeholder="e.g. No API yet. Or: QuickBooks login in 1Password 'Finance'."
             />
           </div>
 

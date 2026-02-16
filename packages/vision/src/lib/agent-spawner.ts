@@ -9,6 +9,7 @@ const CORE_INDEX = path.join(ROOT, 'packages', 'core', 'dist', 'index.js')
 const DATA_DIR = path.join(VISION_CWD, 'data')
 const PROCESSES_FILE = path.join(DATA_DIR, 'processes.json')
 const PROMPTS_FILE = path.join(DATA_DIR, 'prompts.json')
+const HUMAN_FILE = path.join(DATA_DIR, 'human.json')
 const LOGS_DIR = path.join(ROOT, 'logs')
 
 async function readStoredPrompts(): Promise<Record<string, { systemPrompt: string; updatedAt: number }>> {
@@ -27,6 +28,9 @@ export interface TeamMember {
   role: string
   icon: string
   jobDescription?: string
+  goals?: string
+  accessNotes?: string
+  kpis?: string
   status: string
   addedAt: number
   nanoCount: number
@@ -73,13 +77,49 @@ export async function getSystemPromptForMember(
   if (member.jobDescription?.trim()) {
     withRole.push(`Your specific role: ${member.jobDescription.trim()}`)
   }
-  return withRole.join('\n\n')
+  if (member.goals?.trim()) {
+    withRole.push(`Your goals (follow these):\n${member.goals.trim()}`)
+  }
+  if (member.kpis?.trim()) {
+    withRole.push(
+      `Your KPIs (you are measured on these; prioritize achieving them):\n${member.kpis.trim()}\n\n` +
+        `Work towards these KPIs: analyze data (via web search, reports, or context the human provides), take decisions to improve them, and act. ` +
+        `Regularly inform your human of findings, progress, and concrete recommendations to hit these targets. Proactively suggest next steps.`
+    )
+  }
+  if (member.accessNotes?.trim()) {
+    withRole.push(`What access you have (use this when answering): ${member.accessNotes.trim()}`)
+  }
+  withRole.push(
+    `Your available tools: chat, safe bash commands (no sudo/rm -rf), web search (DuckDuckGo), and draft (for copies, captions, emails, posts—a dedicated writing model handles it to save cost). You do not have a browser or direct API access to Instagram/Metricool unless described above; when the human gives you account access or credentials, use what they describe.`
+  )
+  let prompt = withRole.join('\n\n')
+  try {
+    const raw = await fs.readFile(HUMAN_FILE, 'utf-8')
+    const human = JSON.parse(raw) as { name?: string; description?: string }
+    const name = typeof human.name === 'string' ? human.name.trim() : ''
+    const desc = typeof human.description === 'string' ? human.description.trim() : ''
+    if (name || desc) {
+      const parts = ['You work for a human.']
+      if (name) parts.push(`Their name or how to address them: ${name}.`)
+      if (desc) parts.push(`About them: ${desc}`)
+      prompt = prompt + '\n\n' + parts.join(' ')
+    }
+  } catch {
+    // no human.json or invalid — ignore
+  }
+  return prompt
 }
 
 export async function spawnMiniJelly(
   member: TeamMember,
   templateDescription: string
 ): Promise<{ pid: number }> {
+  try {
+    await fs.access(CORE_INDEX)
+  } catch {
+    throw new Error('Core agent not built. Run: pnpm build')
+  }
   const systemPrompt = await getSystemPromptForMember(member, templateDescription)
   await fs.mkdir(LOGS_DIR, { recursive: true })
   const logPath = path.join(LOGS_DIR, `mini-jelly-${member.id}.log`)

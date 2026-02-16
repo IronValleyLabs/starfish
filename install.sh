@@ -132,10 +132,10 @@ echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━�
 # Step 1/3 — Redis
 echo ""
 echo -e "${YELLOW}Step 1/3 — Redis${NC}"
-echo "Jellyfish uses Redis so agents can talk to each other."
+echo "Jellyfish uses Redis so agents can talk to each other (events, metrics). If Redis is missing or not running, the dashboard may show warnings and some features won't work."
 echo ""
 echo "  1) Redis Cloud (free, recommended — no install on your machine)"
-echo "  2) Local Redis (you run redis-server yourself)"
+echo "  2) Local Redis (we'll check if it's installed and help you start it)"
 echo ""
 read -p "Choose (1 or 2): " REDIS_OPTION
 
@@ -162,7 +162,37 @@ if [ "$REDIS_OPTION" = "1" ]; then
     fi
   fi
 else
-  echo "Using local Redis (localhost:6379). You must run redis-server before starting Jellyfish."
+  echo "Using local Redis (localhost:6379)."
+  if command -v redis-cli &> /dev/null; then
+    if redis-cli -h localhost ping 2>/dev/null | grep -q PONG; then
+      echo -e "${GREEN}✅ Local Redis is running.${NC}"
+    else
+      echo -e "${YELLOW}Redis is installed but not running.${NC}"
+      echo "  Start it before Jellyfish:"
+      if [[ "$OS" == "macos" ]]; then
+        echo "    brew services start redis   (or: redis-server)"
+      else
+        echo "    sudo systemctl start redis   (or: redis-server)"
+      fi
+    fi
+  else
+    echo -e "${YELLOW}Redis is not installed. Install it so the agents can communicate:${NC}"
+    if [[ "$OS" == "macos" ]]; then
+      echo "  brew install redis"
+      echo "  Then start: brew services start redis  (or run redis-server)"
+      read -p "Install Redis now with Homebrew? (y/n) " -n 1 -r
+      echo
+      if [[ $REPLY =~ ^[Yy]$ ]]; then
+        brew install redis && echo -e "${GREEN}✅ Redis installed. Start it with: brew services start redis${NC}" || echo -e "${RED}Install failed. Run: brew install redis${NC}"
+      fi
+    elif [[ "$OS" == "linux" ]]; then
+      echo "  sudo apt-get update && sudo apt-get install -y redis-server"
+      echo "  Then start: sudo systemctl start redis"
+      echo "  (Or use Redis Cloud option 1 to avoid installing.)"
+    else
+      echo "  Install Redis from https://redis.io/docs/install/ or use Redis Cloud (option 1)."
+    fi
+  fi
 fi
 
 # Step 2/3 — LLM
@@ -198,22 +228,68 @@ else
 fi
 rm -f .env.bak
 
-# Step 3/3 — Telegram (optional)
+# Step 3/3 — Chat / messaging (at least one required for chat service)
 echo ""
-echo -e "${YELLOW}Step 3/3 — Telegram bot (optional)${NC}"
-read -p "Configure Telegram now? (y/n) " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-  echo "Create a bot at https://t.me/BotFather then paste the token."
-  read -p "Telegram bot token: " TELEGRAM_TOKEN
-  if [[ -n "$TELEGRAM_TOKEN" ]]; then
-    $SED_I "s|TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=$TELEGRAM_TOKEN|" .env
-    rm -f .env.bak
-    echo -e "${GREEN}✅ Telegram configured${NC}"
-  fi
-else
-  echo "You can add it later in Settings."
-fi
+echo -e "${YELLOW}Step 3/3 — Chat / messaging${NC}"
+echo "How will users talk to your agents? (You need at least one for the chat service to start.)"
+echo ""
+echo "  1) None — I'll configure in Settings later"
+echo "  2) Telegram (bot)"
+echo "  3) Twilio (WhatsApp or SMS)"
+echo "  4) Line"
+echo "  5) Slack (Socket Mode)"
+echo "  6) Google Chat"
+echo ""
+read -p "Choose (1–6): " CHAT_OPTION
+
+case "$CHAT_OPTION" in
+  2)
+    echo "Create a bot at https://t.me/BotFather and paste the token."
+    read -p "Telegram bot token: " TELEGRAM_TOKEN
+    if [[ -n "$TELEGRAM_TOKEN" ]]; then
+      $SED_I "s|TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=$TELEGRAM_TOKEN|" .env
+      echo -e "${GREEN}✅ Telegram configured${NC}"
+    fi
+    ;;
+  3)
+    echo "Get credentials at https://console.twilio.com — then set webhook to https://YOUR_DOMAIN:3010/webhook/whatsapp"
+    read -p "Twilio Account SID: " TWILIO_SID
+    read -p "Twilio Auth Token: " TWILIO_AUTH
+    read -p "WhatsApp From (e.g. whatsapp:+14155238886): " TWILIO_FROM
+    if [[ -n "$TWILIO_SID" ]]; then $SED_I "s|TWILIO_ACCOUNT_SID=.*|TWILIO_ACCOUNT_SID=$TWILIO_SID|" .env; fi
+    if [[ -n "$TWILIO_AUTH" ]]; then grep -q "TWILIO_AUTH_TOKEN" .env && $SED_I "s|TWILIO_AUTH_TOKEN=.*|TWILIO_AUTH_TOKEN=$TWILIO_AUTH|" .env || echo "TWILIO_AUTH_TOKEN=$TWILIO_AUTH" >> .env; fi
+    if [[ -n "$TWILIO_FROM" ]]; then $SED_I "s|TWILIO_WHATSAPP_FROM=.*|TWILIO_WHATSAPP_FROM=$TWILIO_FROM|" .env; fi
+    echo -e "${GREEN}✅ Twilio configured. Set CHAT_WEBHOOK_BASE_URL in .env and webhook in Twilio.${NC}"
+    ;;
+  4)
+    echo "Create a channel at https://developers.line.biz — set webhook to https://YOUR_DOMAIN:3010/webhook/line"
+    read -p "Line Channel Access Token: " LINE_TOKEN
+    read -p "Line Channel Secret: " LINE_SECRET
+    if [[ -n "$LINE_TOKEN" ]]; then $SED_I "s|LINE_CHANNEL_ACCESS_TOKEN=.*|LINE_CHANNEL_ACCESS_TOKEN=$LINE_TOKEN|" .env; fi
+    if [[ -n "$LINE_SECRET" ]]; then grep -q "LINE_CHANNEL_SECRET" .env && $SED_I "s|LINE_CHANNEL_SECRET=.*|LINE_CHANNEL_SECRET=$LINE_SECRET|" .env || echo "LINE_CHANNEL_SECRET=$LINE_SECRET" >> .env; fi
+    echo -e "${GREEN}✅ Line configured. Set CHAT_WEBHOOK_BASE_URL in .env.${NC}"
+    ;;
+  5)
+    echo "Create an app at https://api.slack.com/apps (Socket Mode — no webhook)."
+    read -p "Slack Bot Token (xoxb-...): " SLACK_BOT
+    read -p "Slack App-Level Token (xapp-...): " SLACK_APP
+    if [[ -n "$SLACK_BOT" ]]; then $SED_I "s|SLACK_BOT_TOKEN=.*|SLACK_BOT_TOKEN=$SLACK_BOT|" .env; fi
+    if [[ -n "$SLACK_APP" ]]; then grep -q "SLACK_APP_TOKEN" .env && $SED_I "s|SLACK_APP_TOKEN=.*|SLACK_APP_TOKEN=$SLACK_APP|" .env || echo "SLACK_APP_TOKEN=$SLACK_APP" >> .env; fi
+    echo -e "${GREEN}✅ Slack configured${NC}"
+    ;;
+  6)
+    echo "Google Chat: set GOOGLE_CHAT_WEBHOOK_URL or GOOGLE_CHAT_PROJECT_ID in .env. Webhook: https://YOUR_DOMAIN:3010/webhook/google-chat"
+    read -p "Google Chat Webhook URL (or leave empty to set in .env later): " GC_WEBHOOK
+    if [[ -n "$GC_WEBHOOK" ]]; then
+      grep -q "GOOGLE_CHAT_WEBHOOK_URL" .env && $SED_I "s|GOOGLE_CHAT_WEBHOOK_URL=.*|GOOGLE_CHAT_WEBHOOK_URL=$GC_WEBHOOK|" .env || echo "GOOGLE_CHAT_WEBHOOK_URL=$GC_WEBHOOK" >> .env
+      echo -e "${GREEN}✅ Google Chat configured${NC}"
+    fi
+    ;;
+  *)
+    echo "You can add a chat platform later in Settings. At least one is required for the chat service to start."
+    ;;
+esac
+rm -f .env.bak
 
 # --- 8. Build & start ---
 echo ""

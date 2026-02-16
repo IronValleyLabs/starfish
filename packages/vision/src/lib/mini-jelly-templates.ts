@@ -5,6 +5,8 @@ export interface MiniJellyTemplate {
   category: string
   description: string
   defaultGoals: string[]
+  /** Key metrics this role is measured on (e.g. ROAS > 2, response time < 1h). Agent works to achieve these and reports to human. */
+  defaultKpis?: string[]
   requiredAccess: string[]
   capabilities: string[]
 }
@@ -24,6 +26,7 @@ export const MINI_JELLY_TEMPLATES: MiniJellyTemplate[] = [
       'Maintain engagement rate > 3%',
       'Report weekly analytics',
     ],
+    defaultKpis: ['Engagement rate > 3%', 'Response time to comments < 1 hour', 'Weekly analytics reported'],
     requiredAccess: ['Instagram API', 'Twitter API', 'Facebook API'],
     capabilities: [
       'Content creation',
@@ -45,6 +48,7 @@ export const MINI_JELLY_TEMPLATES: MiniJellyTemplate[] = [
       'Create 3 variants if CTR < 1.5%',
       'Report weekly performance',
     ],
+    defaultKpis: ['ROAS (Return on Ad Spend) above target', 'CPA/CPL within budget', 'CTR > 2%', 'Weekly performance + recommendations to human'],
     requiredAccess: ['Meta Ads API', 'Google Ads API'],
     capabilities: [
       'Campaign optimization',
@@ -87,6 +91,7 @@ export const MINI_JELLY_TEMPLATES: MiniJellyTemplate[] = [
       'A/B test subject lines',
       'Segment audiences',
     ],
+    defaultKpis: ['Open rate > 20%', 'Click-through rate', 'Conversion rate per campaign', 'Report findings to human'],
     requiredAccess: ['Mailchimp API', 'SendGrid API'],
     capabilities: [
       'Campaign creation',
@@ -110,6 +115,7 @@ export const MINI_JELLY_TEMPLATES: MiniJellyTemplate[] = [
       'Maintain satisfaction > 4.5/5',
       'Update knowledge base weekly',
     ],
+    defaultKpis: ['First response time < 5 min', 'Resolution rate 80%+', 'CSAT > 4.5/5', 'Surface insights to human'],
     requiredAccess: ['Zendesk API', 'Intercom API', 'Slack'],
     capabilities: [
       'Ticket resolution',
@@ -131,6 +137,7 @@ export const MINI_JELLY_TEMPLATES: MiniJellyTemplate[] = [
       'Follow up within 24 hours',
       'Close 10% of qualified leads',
     ],
+    defaultKpis: ['Leads qualified per day', 'Demos scheduled per week', 'Conversion rate on qualified leads', 'Report pipeline and blockers to human'],
     requiredAccess: ['HubSpot API', 'Salesforce API', 'Calendar API'],
     capabilities: [
       'Lead qualification',
@@ -196,6 +203,7 @@ export const MINI_JELLY_TEMPLATES: MiniJellyTemplate[] = [
       'Maintain dashboard accuracy',
       'Alert on anomalies',
     ],
+    defaultKpis: ['Weekly reports delivered', 'Actionable insights per week', 'Anomalies flagged', 'Recommendations to human'],
     requiredAccess: ['Database', 'Analytics Tools'],
     capabilities: [
       'Data analysis',
@@ -282,6 +290,7 @@ export const MINI_JELLY_TEMPLATES: MiniJellyTemplate[] = [
       'Generate monthly reports',
       'Alert on unusual transactions',
     ],
+    defaultKpis: ['Accounts reconciled on time', 'Expense accuracy', 'Monthly reports to human', 'Unusual transactions flagged'],
     requiredAccess: ['QuickBooks API', 'Bank APIs'],
     capabilities: [
       'Account reconciliation',
@@ -324,6 +333,7 @@ export const MINI_JELLY_TEMPLATES: MiniJellyTemplate[] = [
       'Send reminders for overdue invoices',
       'Report monthly receivables',
     ],
+    defaultKpis: ['Invoices sent within 24h', 'Days receivable', 'Overdue reminders sent', 'Monthly receivables report to human'],
     requiredAccess: ['Invoicing Software', 'Payment Gateway'],
     capabilities: [
       'Invoice creation',

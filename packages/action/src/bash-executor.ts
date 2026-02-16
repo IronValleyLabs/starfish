@@ -40,8 +40,6 @@ export class BashExecutor {
       };
     }
     try {
-      // Do not log full command: may contain secrets (keys, tokens, paths)
-      console.log('[BashExecutor] Command received, length=', command.length);
       const { stdout, stderr } = await execAsync(command, {
         timeout: 30000,
         maxBuffer: 1024 * 1024,

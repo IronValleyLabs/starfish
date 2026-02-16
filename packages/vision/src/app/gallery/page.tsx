@@ -11,20 +11,38 @@ const MAX_TEAM_SIZE = 20
 export default function Gallery() {
   const router = useRouter()
   const categories = getMiniJellysByCategory()
-  const [modal, setModal] = useState<{ template: MiniJellyTemplate; jobDescription: string } | null>(null)
+  const [modal, setModal] = useState<{
+    template: MiniJellyTemplate
+    jobDescription: string
+    goals: string
+    kpis: string
+    accessNotes: string
+  } | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const openAddModal = (template: MiniJellyTemplate) => {
-    setModal({ template, jobDescription: '' })
+    const defaultGoals = (template.defaultGoals ?? []).join('\n')
+    const defaultKpis = (template.defaultKpis ?? []).join('\n')
+    const defaultAccess =
+      (template.requiredAccess ?? []).length > 0
+        ? `Suggested: ${template.requiredAccess.join(', ')}. Describe how this agent can use them (e.g. login email, where credentials are). Do not paste real passwords.`
+        : ''
+    setModal({ template, jobDescription: '', goals: defaultGoals, kpis: defaultKpis, accessNotes: defaultAccess })
+    setError(null)
   }
 
   const closeModal = () => {
-    if (!submitting) setModal(null)
+    if (!submitting) {
+      setModal(null)
+      setError(null)
+    }
   }
 
   const handleAddToTeam = async () => {
     if (!modal) return
     setSubmitting(true)
+    setError(null)
     try {
       const res = await fetch('/api/team', {
         method: 'POST',
@@ -32,11 +50,14 @@ export default function Gallery() {
         body: JSON.stringify({
           templateId: modal.template.id,
           jobDescription: modal.jobDescription.trim() || undefined,
+          goals: modal.goals.trim() || undefined,
+          kpis: modal.kpis.trim() || undefined,
+          accessNotes: modal.accessNotes.trim() || undefined,
         }),
       })
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        alert(data.error || 'Failed to add to team')
+        setError(typeof data.error === 'string' ? data.error : 'Failed to add to team')
         return
       }
       closeModal()
@@ -63,7 +84,7 @@ export default function Gallery() {
                 Mini Jelly Gallery
               </h1>
               <p className="text-sm text-ocean-400">
-                Choose an AI employee for your team (max {MAX_TEAM_SIZE})
+                Add role-based AI agents (max {MAX_TEAM_SIZE}). Set their KPIs; they work to achieve them and keep you informed with findings and recommendations.
               </p>
             </div>
           </div>
@@ -127,15 +148,56 @@ export default function Gallery() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-sm text-ocean-400 mb-4">
-              Optional: add a job description or role summary for this agent.
+            <p className="text-sm text-ocean-400 mb-2">
+              <strong>Goals & targets</strong> — What this agent should do (e.g. &quot;Post 3 times per day&quot;). One per line.
             </p>
+            <textarea
+              value={modal.goals}
+              onChange={(e) =>
+                setModal((m) => (m ? { ...m, goals: e.target.value } : null))
+              }
+              rows={4}
+              className="w-full px-4 py-3 bg-ocean-800/50 border border-ocean-700 rounded-lg text-ocean-100 text-sm focus:outline-none focus:border-ocean-500 resize-y mb-4"
+              placeholder="One goal per line..."
+            />
+            <p className="text-sm text-ocean-400 mb-2">
+              <strong>KPIs</strong> — Metrics this agent is measured on (e.g. ROAS &gt; 2, response time &lt; 1h). The agent will work to achieve them and report findings and recommendations to you.
+            </p>
+            <textarea
+              value={modal.kpis}
+              onChange={(e) =>
+                setModal((m) => (m ? { ...m, kpis: e.target.value } : null))
+              }
+              rows={3}
+              className="w-full px-4 py-3 bg-ocean-800/50 border border-ocean-700 rounded-lg text-ocean-100 text-sm focus:outline-none focus:border-ocean-500 resize-y mb-4"
+              placeholder="e.g. ROAS > 2, CPA < $50, Weekly report to human"
+            />
+            <p className="text-sm text-ocean-400 mb-4">
+              Optional: <strong>Job description</strong> or role summary (Markdown supported).
+            </p>
+            <p className="text-sm text-ocean-400 mb-2">
+              <strong>Access & credentials</strong> — Describe what this agent can use (e.g. &quot;Login: agent@company.com&quot;, &quot;API keys in .env&quot;, &quot;Browser: use 1Password for Bank X&quot;). Do not paste real passwords. The agent will see this so it knows what it can do.
+            </p>
+            <textarea
+              value={modal.accessNotes}
+              onChange={(e) =>
+                setModal((m) => (m ? { ...m, accessNotes: e.target.value } : null))
+              }
+              rows={3}
+              className="w-full px-4 py-3 bg-ocean-800/50 border border-ocean-700 rounded-lg text-ocean-100 text-sm focus:outline-none focus:border-ocean-500 resize-y mb-4"
+              placeholder="e.g. No API yet; only web search. Or: QuickBooks login in 1Password under 'Finance'."
+            />
+            {error && (
+              <p className="text-sm text-red-400 mb-4 rounded-lg bg-red-500/10 px-3 py-2">
+                {error}
+              </p>
+            )}
             <textarea
               value={modal.jobDescription}
               onChange={(e) =>
                 setModal((m) => (m ? { ...m, jobDescription: e.target.value } : null))
               }
-              placeholder="e.g. Manages our Instagram and Twitter, posts 3x daily, replies within 1h"
+              placeholder="e.g. Manages our Instagram and Twitter, replies within 1h"
               className="w-full h-24 px-4 py-3 bg-ocean-800/50 border border-ocean-700 rounded-lg text-ocean-100 text-sm focus:outline-none focus:border-ocean-500 resize-none mb-4"
             />
             <div className="flex gap-2 justify-end">

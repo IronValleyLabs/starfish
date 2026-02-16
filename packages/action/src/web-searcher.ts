@@ -4,7 +4,6 @@ import * as cheerio from 'cheerio';
 export class WebSearcher {
   async search(query: string): Promise<string> {
     try {
-      console.log(`[WebSearcher] Buscando: ${query}`);
       const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
       const response = await axios.get(searchUrl, {
         headers: {

@@ -9,8 +9,8 @@ const DEFAULT_SYSTEM_PROMPT =
   'You are a helpful, friendly assistant. Reply in a concise and clear way.';
 
 export interface DetectedIntent {
-  intent: 'bash' | 'websearch' | 'response';
-  params: { command?: string; query?: string; text?: string };
+  intent: 'bash' | 'websearch' | 'draft' | 'response';
+  params: { command?: string; query?: string; text?: string; prompt?: string };
   usage?: { prompt_tokens: number; completion_tokens: number };
 }
 
@@ -30,7 +30,6 @@ export class AIProcessor {
       process.env.AI_MODEL ||
       (config.provider === 'openrouter' ? 'anthropic/claude-3.5-sonnet' : 'gpt-4o');
     this.systemPrompt = (systemPrompt && systemPrompt.trim()) || DEFAULT_SYSTEM_PROMPT;
-    console.log(`[AIProcessor] Provider: ${config.provider}, Model: ${this.model}`);
   }
 
   async detectIntent(
@@ -59,9 +58,10 @@ export class AIProcessor {
         intent?: string;
         params?: Record<string, string>;
       };
-      const intent = parsed.intent === 'bash' || parsed.intent === 'websearch'
-        ? parsed.intent
-        : 'response';
+      const intent =
+        parsed.intent === 'bash' || parsed.intent === 'websearch' || parsed.intent === 'draft'
+          ? parsed.intent
+          : 'response';
       const params = parsed.params ?? {};
       return {
         intent,
@@ -69,6 +69,7 @@ export class AIProcessor {
           command: params.command,
           query: params.query,
           text: params.text,
+          prompt: params.prompt,
         },
         usage,
       };
