@@ -26,7 +26,7 @@ async function writeAssignments(assignments: Record<string, string>): Promise<vo
   await fs.writeFile(ASSIGNMENTS_FILE, JSON.stringify(assignments, null, 2), 'utf-8');
 }
 
-function addMessagesColumnsIfNeeded(sqlite: Database): void {
+function addMessagesColumnsIfNeeded(sqlite: InstanceType<typeof Database>): void {
   const cols = ['user_id', 'platform', 'agent_id'];
   for (const col of cols) {
     try {

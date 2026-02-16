@@ -1,8 +1,14 @@
 import Redis from 'ioredis';
 import { randomUUID } from 'crypto';
 import { Event, EventName, EventPayload } from './index';
+import { getRedisOptions } from './redis-config';
 
 type EventHandler = (event: Event) => void;
+
+function createRedis(): Redis {
+  const opts = getRedisOptions();
+  return typeof opts === 'string' ? new Redis(opts) : new Redis(opts);
+}
 
 export class EventBus {
   private publisher: Redis;
@@ -10,15 +16,16 @@ export class EventBus {
   private subscriptions: Map<EventName, EventHandler[]> = new Map();
 
   constructor(private agentId: string) {
-    const redisHost = process.env.REDIS_HOST || 'localhost';
-    this.publisher = new Redis({ host: redisHost });
-    this.subscriber = new Redis({ host: redisHost });
+    const redisOpts = getRedisOptions();
+    const redisLabel = typeof redisOpts === 'string' ? redisOpts.replace(/:[^:@]+@/, ':***@') : `${redisOpts.host}:${redisOpts.port}`;
+    this.publisher = createRedis();
+    this.subscriber = createRedis();
 
     let redisErrorLogged = false;
     const onRedisError = (err: Error): void => {
       if (!redisErrorLogged) {
         redisErrorLogged = true;
-        console.error(`[EventBus] Redis error (${redisHost}):`, err.message);
+        console.error(`[EventBus] Redis error (${redisLabel}):`, err.message);
       }
     };
     this.publisher.on('error', onRedisError);

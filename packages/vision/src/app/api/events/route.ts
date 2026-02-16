@@ -1,5 +1,11 @@
 import { NextRequest } from 'next/server'
 import Redis from 'ioredis'
+import { getRedisOptions } from '@jellyfish/shared'
+
+function createRedis(): Redis {
+  const opts = getRedisOptions()
+  return typeof opts === 'string' ? new Redis(opts) : new Redis(opts)
+}
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -9,10 +15,7 @@ export async function GET(request: NextRequest) {
 
   const stream = new ReadableStream({
     async start(controller) {
-      const subscriber = new Redis({
-        host: process.env.REDIS_HOST || 'localhost',
-        port: Number(process.env.REDIS_PORT) || 6379,
-      })
+      const subscriber = createRedis()
 
       const channels = [
         'message.received',

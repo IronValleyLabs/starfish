@@ -1,14 +1,20 @@
 import Redis from 'ioredis';
+import { getRedisOptions } from './redis-config';
 
 const KEY_PREFIX = 'conversation:';
 const TTL_SECONDS = 24 * 60 * 60; // 24 hours
+
+function createRedis(redisUrl?: string): Redis {
+  if (redisUrl?.trim()) return new Redis(redisUrl.trim());
+  const opts = getRedisOptions();
+  return typeof opts === 'string' ? new Redis(opts) : new Redis(opts);
+}
 
 export class ConversationRouter {
   private client: Redis;
 
   constructor(redisUrl?: string) {
-    const host = process.env.REDIS_HOST || 'localhost';
-    this.client = redisUrl ? new Redis(redisUrl) : new Redis({ host });
+    this.client = createRedis(redisUrl);
   }
 
   private key(conversationId: string): string {

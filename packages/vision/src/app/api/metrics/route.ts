@@ -1,12 +1,10 @@
 import { NextRequest } from 'next/server'
 import Redis from 'ioredis'
-import { MetricsCollector } from '@jellyfish/shared'
+import { MetricsCollector, getRedisOptions } from '@jellyfish/shared'
 
-function getRedis() {
-  return new Redis({
-    host: process.env.REDIS_HOST || 'localhost',
-    port: Number(process.env.REDIS_PORT) || 6379,
-  })
+function getRedis(): Redis {
+  const opts = getRedisOptions()
+  return typeof opts === 'string' ? new Redis(opts) : new Redis(opts)
 }
 
 export const dynamic = 'force-dynamic'

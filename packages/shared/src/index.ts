@@ -51,6 +51,7 @@ export interface ContextLoadedPayload extends EventPayload {
 }
 
 export { EventBus } from './event-bus';
+export { getRedisOptions, type RedisOptions } from './redis-config';
 export { detectMention, type TeamMemberForRouting } from './mention-detector';
 export { ConversationRouter } from './conversation-router';
 export { MetricsCollector, type Metrics } from './metrics';

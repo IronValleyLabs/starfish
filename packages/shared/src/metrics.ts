@@ -1,7 +1,13 @@
 import Redis from 'ioredis';
+import { getRedisOptions } from './redis-config';
 
 const KEY_PREFIX = 'metrics:';
 const TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
+
+function createRedis(): Redis {
+  const opts = getRedisOptions();
+  return typeof opts === 'string' ? new Redis(opts) : new Redis(opts);
+}
 
 function todayKey(agentId: string): string {
   const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
@@ -20,7 +26,7 @@ export class MetricsCollector {
   private client: Redis;
 
   constructor(redis?: Redis) {
-    this.client = redis ?? new Redis({ host: process.env.REDIS_HOST || 'localhost' });
+    this.client = redis ?? createRedis();
   }
 
   private key(agentId: string, date?: string): string {
