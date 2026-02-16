@@ -20,7 +20,7 @@ export interface Event {
   agentId?: string;
 }
 
-// Tipos de Payloads Específicos
+// Specific payload types
 export interface MessageReceivedPayload extends EventPayload {
   platform: 'telegram' | 'whatsapp' | 'line' | 'google-chat' | 'slack' | 'discord';
   userId: string;

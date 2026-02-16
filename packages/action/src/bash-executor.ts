@@ -4,18 +4,31 @@ import { promisify } from 'util';
 const execAsync = promisify(exec);
 
 export class BashExecutor {
-  private dangerousCommands = [
+  private dangerousPatterns = [
     'rm -rf',
+    'rm -fr',
     'sudo',
     'mkfs',
-    'dd',
+    'dd ',
     '> /dev/',
+    '>> /dev/',
     'chmod 777',
+    'chmod +s',
+    'eval ',
+    'eval(',
+    'base64 -d',
+    'base64 -D',
+    '| sh',
+    '| bash',
+    '| zsh',
+    '$(',
+    '`',
   ];
 
   isDangerous(command: string): boolean {
-    return this.dangerousCommands.some((dangerous) =>
-      command.includes(dangerous)
+    const normalized = command.trim();
+    return this.dangerousPatterns.some((p) =>
+      normalized.includes(p)
     );
   }
 
@@ -23,23 +36,24 @@ export class BashExecutor {
     if (this.isDangerous(command)) {
       return {
         output: '',
-        error: 'Comando peligroso bloqueado. Requiere aprobación manual.',
+        error: 'Dangerous command blocked. Manual approval required.',
       };
     }
     try {
-      console.log(`[BashExecutor] Ejecutando: ${command}`);
+      // Do not log full command: may contain secrets (keys, tokens, paths)
+      console.log('[BashExecutor] Command received, length=', command.length);
       const { stdout, stderr } = await execAsync(command, {
         timeout: 30000,
         maxBuffer: 1024 * 1024,
       });
       return {
-        output: stdout || stderr || 'Comando ejecutado sin salida',
+        output: stdout || stderr || 'Command completed with no output',
       };
     } catch (error: unknown) {
       const err = error as { message?: string; stderr?: string };
       return {
         output: '',
-        error: err.stderr || err.message || 'Error desconocido',
+        error: err.stderr || err.message || 'Unknown error',
       };
     }
   }

@@ -33,7 +33,7 @@ class ActionAgent {
     this.eventBus.subscribe('intent.detected', async (event) => {
       const payload = event.payload as IntentPayload;
       const agentId = payload.agentId ?? 'core-agent-1';
-      console.log(`[ActionAgent] Intención detectada: ${payload.intent}`);
+      console.log(`[ActionAgent] Intent detected: ${payload.intent}`);
       let result: { output: string; error?: string } = { output: '' };
       try {
         switch (payload.intent) {
@@ -49,10 +49,10 @@ class ActionAgent {
             result = { output: searchResult };
             break;
           case 'response':
-            result = { output: payload.params?.text || 'Sin respuesta' };
+            result = { output: payload.params?.text || 'No response' };
             break;
           default:
-            result = { output: 'Intención no reconocida' };
+            result = { output: 'Intent not recognized' };
         }
         if (result.error) {
           await this.eventBus.publish(
@@ -77,12 +77,12 @@ class ActionAgent {
           );
         }
       } catch (error: unknown) {
-        console.error('[ActionAgent] Error ejecutando acción:', error);
+        console.error('[ActionAgent] Error running action:', error);
         await this.eventBus.publish(
           'action.failed',
           {
             conversationId: payload.conversationId,
-            error: error instanceof Error ? error.message : 'Error desconocido',
+            error: error instanceof Error ? error.message : 'Unknown error',
           },
           event.correlationId
         );

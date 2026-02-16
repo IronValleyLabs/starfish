@@ -4,9 +4,9 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Save } from 'lucide-react'
 
-const DEFAULT_PROMPT = `Eres un asistente útil y amigable. Responde de forma concisa y clara en el mismo idioma que el usuario.
-Cuando el usuario pregunte algo, da una respuesta directa y práctica.
-Si no sabes algo, dilo con naturalidad.`
+const DEFAULT_PROMPT = `You are a helpful, friendly assistant. Reply concisely and clearly in the same language as the user.
+When the user asks something, give a direct, practical answer.
+If you don't know something, say so naturally.`
 
 export default function CorePromptPage() {
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT)

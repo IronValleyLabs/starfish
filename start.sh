@@ -14,14 +14,14 @@ if [ -f .env ]; then
   set -a
   source .env
   set +a
-  echo "✅ Variables de .env cargadas"
+  echo "✅ .env loaded"
 fi
-echo "🪼 Iniciando Jellyfish..."
+echo "🪼 Starting Jellyfish..."
 echo ""
-echo "✅ Compilando paquetes..."
+echo "✅ Building packages..."
 pnpm build
 echo ""
-echo "🚀 Iniciando agentes..."
+echo "🚀 Starting agents..."
 echo ""
 pnpm --filter @jellyfish/memory dev &
 MEMORY_PID=$!
@@ -44,7 +44,7 @@ echo ""
 echo "🪼 Respawn Mini Jellys (if any)..."
 curl -s -X POST http://localhost:3000/api/team/respawn >/dev/null 2>&1 || true
 echo ""
-echo "✅ Jellyfish está corriendo!"
+echo "✅ Jellyfish is running!"
 echo "   - Memory Agent (PID: $MEMORY_PID)"
 echo "   - Core Agent (PID: $CORE_PID)"
 echo "   - Action Agent (PID: $ACTION_PID)"
@@ -52,7 +52,7 @@ echo "   - Chat Agent (PID: $CHAT_PID)"
 echo "   - Dashboard Vision (PID: $VISION_PID)"
 echo ""
 echo "🌐 Dashboard: http://localhost:3000"
-echo "📱 Telegram: habla con tu bot"
-echo "🛑 Presiona Ctrl+C para detener"
+echo "📱 Telegram: talk to your bot"
+echo "🛑 Press Ctrl+C to stop"
 echo ""
 wait

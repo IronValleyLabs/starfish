@@ -25,11 +25,11 @@ export class WebSearcher {
           }
         });
       return results.length > 0
-        ? `Resultados de búsqueda para "${query}":\n\n${results.join('\n\n')}`
-        : 'No se encontraron resultados.';
+        ? `Search results for "${query}":\n\n${results.join('\n\n')}`
+        : 'No results found.';
     } catch (error: unknown) {
       console.error('[WebSearcher] Error:', error);
-      return 'Error al realizar la búsqueda web.';
+      return 'Error performing web search.';
     }
   }
 }

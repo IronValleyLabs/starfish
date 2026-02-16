@@ -56,12 +56,12 @@ function createMessageHandler(
   };
 }
 
-function collectAdapters(app: Application): ChatAdapter[] {
+function collectAdapters(app: Application, options?: { skipLine?: boolean }): ChatAdapter[] {
   const list: (ChatAdapter | null)[] = [
     createTelegramAdapter(),
     createWhatsAppAdapter(app),
     createSlackAdapter(),
-    createLineAdapter(app),
+    options?.skipLine ? null : createLineAdapter(app),
     createGoogleChatAdapter(app),
   ];
   return list.filter((a): a is ChatAdapter => a != null);
@@ -69,10 +69,16 @@ function collectAdapters(app: Application): ChatAdapter[] {
 
 async function main() {
   const app = express();
+  // Line webhook needs raw body for X-Line-Signature; register route before express.json()
+  const lineRaw = express.raw({ type: 'application/json' });
+  const lineAdapter = createLineAdapter(app, lineRaw);
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  const adapters = collectAdapters(app);
+  const adapters = [
+    ...(lineAdapter ? [lineAdapter] : []),
+    ...collectAdapters(app, { skipLine: true }),
+  ];
   if (adapters.length === 0) {
     console.warn(
       '[ChatAgent] No chat platform configured. Set one of: TELEGRAM_BOT_TOKEN, TWILIO_ACCOUNT_SID+TWILIO_AUTH_TOKEN, SLACK_BOT_TOKEN+SLACK_APP_TOKEN, LINE_CHANNEL_ACCESS_TOKEN, GOOGLE_CHAT_PROJECT_ID or GOOGLE_CHAT_WEBHOOK_URL.'

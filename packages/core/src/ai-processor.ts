@@ -95,7 +95,7 @@ export class AIProcessor {
       temperature: 0.7,
       max_tokens: 500,
     });
-    const content = completion.choices[0].message.content || 'Lo siento, no pude generar una respuesta.';
+    const content = completion.choices[0].message.content || 'Sorry, I could not generate a response.';
     const usage = completion.usage
       ? {
           prompt_tokens: completion.usage.prompt_tokens ?? 0,

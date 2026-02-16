@@ -41,7 +41,7 @@ export class EventBus {
     if (!this.subscriptions.has(name)) {
       this.subscriptions.set(name, []);
       this.subscriber.subscribe(name, (err) => {
-        if (err) console.error(`Error suscribiéndose a ${name}`, err);
+        if (err) console.error(`Error subscribing to ${name}`, err);
         else console.log(`[EventBus] Agente ${this.agentId} suscrito a: ${name}`);
       });
     }
