@@ -3,6 +3,7 @@ import {
   INTENT_DETECTION_SYSTEM,
   buildIntentDetectionUserMessage,
 } from './prompts/intent-detection';
+import { getLLMClientConfig } from './llm-provider';
 
 const DEFAULT_SYSTEM_PROMPT =
   'You are a helpful, friendly assistant. Reply in a concise and clear way.';
@@ -19,17 +20,17 @@ export class AIProcessor {
   private systemPrompt: string;
 
   constructor(systemPrompt?: string) {
+    const config = getLLMClientConfig();
     this.client = new OpenAI({
-      apiKey: process.env.OPENROUTER_API_KEY,
-      baseURL: 'https://openrouter.ai/api/v1',
-      defaultHeaders: {
-        'HTTP-Referer': 'https://github.com/IronValleyLabs/jellyfish',
-        'X-Title': 'Jellyfish AI Agent',
-      },
+      apiKey: config.apiKey,
+      baseURL: config.baseURL,
+      defaultHeaders: config.defaultHeaders,
     });
-    this.model = process.env.AI_MODEL || 'anthropic/claude-3.5-sonnet';
+    this.model =
+      process.env.AI_MODEL ||
+      (config.provider === 'openrouter' ? 'anthropic/claude-3.5-sonnet' : 'gpt-4o');
     this.systemPrompt = (systemPrompt && systemPrompt.trim()) || DEFAULT_SYSTEM_PROMPT;
-    console.log(`[AIProcessor] Model: ${this.model}`);
+    console.log(`[AIProcessor] Provider: ${config.provider}, Model: ${this.model}`);
   }
 
   async detectIntent(

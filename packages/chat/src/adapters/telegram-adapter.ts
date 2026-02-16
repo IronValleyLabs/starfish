@@ -3,11 +3,10 @@ import type { ChatAdapter, IncomingMessage } from './base-adapter';
 
 const PREFIX = 'telegram_';
 
-export function createTelegramAdapter(): ChatAdapter {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token) {
-    throw new Error('TELEGRAM_BOT_TOKEN is not set in .env');
-  }
+/** Returns Telegram adapter if TELEGRAM_BOT_TOKEN is set, otherwise null. */
+export function createTelegramAdapter(): ChatAdapter | null {
+  const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
+  if (!token) return null;
   const bot = new Telegraf(token);
   let messageHandler: ((message: IncomingMessage) => void) | null = null;
 

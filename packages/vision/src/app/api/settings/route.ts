@@ -4,7 +4,9 @@ import path from 'path'
 
 const ALLOWED_KEYS = [
   'TELEGRAM_BOT_TOKEN',
+  'LLM_PROVIDER',
   'OPENROUTER_API_KEY',
+  'OPENAI_API_KEY',
   'AI_MODEL',
   'REDIS_HOST',
 ] as const
@@ -45,13 +47,17 @@ export async function GET() {
     const lines = parseEnvLines(content)
 
     const telegramToken = getByKey(lines, 'TELEGRAM_BOT_TOKEN')
+    const llmProvider = getByKey(lines, 'LLM_PROVIDER') || 'openrouter'
     const openrouterKey = getByKey(lines, 'OPENROUTER_API_KEY')
+    const openaiKey = getByKey(lines, 'OPENAI_API_KEY')
     const aiModel = getByKey(lines, 'AI_MODEL')
     const redisHost = getByKey(lines, 'REDIS_HOST')
 
     return Response.json({
       telegramToken: telegramToken ? maskSecret(telegramToken) : '',
+      llmProvider: llmProvider || 'openrouter',
       openrouterKey: openrouterKey ? maskSecret(openrouterKey) : '',
+      openaiKey: openaiKey ? maskSecret(openaiKey) : '',
       aiModel: aiModel || 'anthropic/claude-3.5-sonnet',
       redisHost: redisHost || 'localhost',
     })
@@ -67,7 +73,9 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   let body: {
     telegramToken?: string
+    llmProvider?: string
     openrouterKey?: string
+    openaiKey?: string
     aiModel?: string
     redisHost?: string
   }
@@ -77,12 +85,16 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { telegramToken, openrouterKey, aiModel, redisHost } = body
+  const { telegramToken, llmProvider, openrouterKey, openaiKey, aiModel, redisHost } = body
   if (typeof aiModel !== 'string' || !aiModel.trim()) {
     return Response.json({ error: 'aiModel is required' }, { status: 400 })
   }
   if (typeof redisHost !== 'string' || !redisHost.trim()) {
     return Response.json({ error: 'redisHost is required' }, { status: 400 })
+  }
+  const provider = (llmProvider ?? '').trim().toLowerCase()
+  if (provider && provider !== 'openrouter' && provider !== 'openai') {
+    return Response.json({ error: 'llmProvider must be openrouter or openai' }, { status: 400 })
   }
 
   const envPath = getEnvPath()
@@ -103,7 +115,9 @@ export async function POST(request: NextRequest) {
   const safe = (s: string) => s.trim().replace(/\r?\n/g, '')
   const updates: Record<string, string> = {
     TELEGRAM_BOT_TOKEN: useToken(telegramToken, getByKey(lines, 'TELEGRAM_BOT_TOKEN')),
+    LLM_PROVIDER: provider ? provider : (getByKey(lines, 'LLM_PROVIDER') || 'openrouter'),
     OPENROUTER_API_KEY: useToken(openrouterKey, getByKey(lines, 'OPENROUTER_API_KEY')),
+    OPENAI_API_KEY: useToken(openaiKey, getByKey(lines, 'OPENAI_API_KEY')),
     AI_MODEL: safe(aiModel),
     REDIS_HOST: safe(redisHost),
   }

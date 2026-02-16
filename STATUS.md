@@ -94,7 +94,7 @@
 
 1. **Arranque**: Hay que ejecutar `./start.sh` (o cada proceso por separado). No hay un solo “supervisor” que levante todo.
 2. **Reintentos**: No hay retry automático ante fallos de Redis/OpenRouter; un fallo puntual puede dejar un mensaje sin respuesta.
-3. **Coste de intent**: El coste de la llamada LLM de detección de intención no se suma a las métricas (solo el de `generateResponse`).
+3. **Múltiples plataformas**: El coste de la llamada LLM de detección de intención no se suma a las métricas (solo el de `generateResponse`).
 4. **Status del core principal**: El proceso “core-agent-1” no aparece en online/offline porque no está en processes.json.
 5. **Múltiples plataformas**: Solo Telegram está implementado; WhatsApp/Line/Google Chat son stubs.
 
@@ -108,5 +108,7 @@
 - [x] Métricas en Redis y mostradas en dashboard (incluyendo core-agent-1 en totales).
 - [x] Online/offline para Mini Jellys según processes.json.
 - [x] System prompts editables (Vision) y Core principal los carga desde archivo.
-- [ ] Coste de `detectIntent` en métricas (mejora opcional).
-- [ ] Indicador de estado para Core/Memory/Chat/Action (opcional, requiere otro mecanismo distinto a processes.json).
+- [x] Coste de `detectIntent` en métricas.
+- [x] Indicador de estado para Core/Memory/Chat/Action (main-processes.json + dashboard).
+- [x] Action agent en start.sh.
+- [x] Chat envía al usuario los errores (action.failed).

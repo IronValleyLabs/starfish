@@ -143,7 +143,9 @@ export default function Settings() {
   const [showTokens, setShowTokens] = useState(false)
   const [config, setConfig] = useState({
     telegramToken: '',
+    llmProvider: 'openrouter' as 'openrouter' | 'openai',
     openrouterKey: '',
+    openaiKey: '',
     aiModel: 'anthropic/claude-3.5-sonnet',
     redisHost: 'localhost',
   })
@@ -154,10 +156,13 @@ export default function Settings() {
   useEffect(() => {
     fetch('/api/settings')
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error('Failed to load'))))
-      .then((data: { telegramToken?: string; openrouterKey?: string; aiModel?: string; redisHost?: string }) => {
+      .then((data: { telegramToken?: string; llmProvider?: string; openrouterKey?: string; openaiKey?: string; aiModel?: string; redisHost?: string }) => {
+        const provider = (data.llmProvider ?? 'openrouter').toLowerCase()
         setConfig({
           telegramToken: data.telegramToken ?? '',
+          llmProvider: provider === 'openai' ? 'openai' : 'openrouter',
           openrouterKey: data.openrouterKey ?? '',
+          openaiKey: data.openaiKey ?? '',
           aiModel: data.aiModel ?? 'anthropic/claude-3.5-sonnet',
           redisHost: data.redisHost ?? 'localhost',
         })
@@ -175,7 +180,9 @@ export default function Settings() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           telegramToken: config.telegramToken,
+          llmProvider: config.llmProvider,
           openrouterKey: config.openrouterKey,
+          openaiKey: config.openaiKey,
           aiModel: config.aiModel,
           redisHost: config.redisHost,
         }),
@@ -260,6 +267,25 @@ export default function Settings() {
 
               <div>
                 <label className="block text-sm font-medium text-ocean-300 mb-2">
+                  LLM Provider
+                </label>
+                <select
+                  value={config.llmProvider}
+                  onChange={(e) =>
+                    setConfig({ ...config, llmProvider: e.target.value as 'openrouter' | 'openai' })
+                  }
+                  className="w-full px-4 py-2 bg-ocean-800/50 border border-ocean-700 rounded-lg text-ocean-100 focus:outline-none focus:border-ocean-500"
+                >
+                  <option value="openrouter">OpenRouter (Claude, GPT, Gemini, etc.)</option>
+                  <option value="openai">OpenAI (GPT only)</option>
+                </select>
+                <p className="text-xs text-ocean-500 mt-1">
+                  Set the matching API key below. Restart Core agent after changing.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-ocean-300 mb-2">
                   OpenRouter API Key
                 </label>
                 <input
@@ -272,7 +298,7 @@ export default function Settings() {
                   placeholder="sk-or-v1-..."
                 />
                 <p className="text-xs text-ocean-500 mt-1">
-                  Get from{' '}
+                  Used when LLM Provider is OpenRouter.{' '}
                   <a
                     href="https://openrouter.ai/keys"
                     target="_blank"
@@ -281,7 +307,25 @@ export default function Settings() {
                   >
                     openrouter.ai/keys
                   </a>
-                  . Leave masked value to keep current.
+                  . Leave masked to keep current.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-ocean-300 mb-2">
+                  OpenAI API Key
+                </label>
+                <input
+                  type={showTokens ? 'text' : 'password'}
+                  value={config.openaiKey}
+                  onChange={(e) =>
+                    setConfig({ ...config, openaiKey: e.target.value })
+                  }
+                  className="w-full px-4 py-2 bg-ocean-800/50 border border-ocean-700 rounded-lg text-ocean-100 focus:outline-none focus:border-ocean-500"
+                  placeholder="sk-..."
+                />
+                <p className="text-xs text-ocean-500 mt-1">
+                  Used when LLM Provider is OpenAI. Leave masked to keep current.
                 </p>
               </div>
 
@@ -296,12 +340,19 @@ export default function Settings() {
                   }
                   className="w-full px-4 py-2 bg-ocean-800/50 border border-ocean-700 rounded-lg text-ocean-100 focus:outline-none focus:border-ocean-500"
                 >
-                  <option value="anthropic/claude-3.5-sonnet">
-                    Claude 3.5 Sonnet (Recommended)
-                  </option>
-                  <option value="openai/gpt-4-turbo">GPT-4 Turbo</option>
-                  <option value="google/gemini-pro-1.5">Gemini Pro 1.5</option>
-                  <option value="openai/gpt-4o-mini">GPT-4o Mini (Cheapest)</option>
+                  <optgroup label="OpenRouter">
+                    <option value="anthropic/claude-3.5-sonnet">
+                      Claude 3.5 Sonnet (Recommended)
+                    </option>
+                    <option value="openai/gpt-4-turbo">GPT-4 Turbo</option>
+                    <option value="google/gemini-pro-1.5">Gemini Pro 1.5</option>
+                    <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+                  </optgroup>
+                  <optgroup label="OpenAI">
+                    <option value="gpt-4o">GPT-4o</option>
+                    <option value="gpt-4o-mini">GPT-4o Mini</option>
+                    <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                  </optgroup>
                 </select>
               </div>
 

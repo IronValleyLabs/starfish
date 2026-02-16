@@ -1,7 +1,12 @@
 import path from 'path';
+import express, { type Application } from 'express';
 import { EventBus, detectMention, ConversationRouter } from '@jellyfish/shared';
 import { loadTeam } from './load-team';
 import { createTelegramAdapter } from './adapters/telegram-adapter';
+import { createWhatsAppAdapter } from './adapters/whatsapp-adapter';
+import { createSlackAdapter } from './adapters/slack-adapter';
+import { createLineAdapter } from './adapters/line-adapter';
+import { createGoogleChatAdapter } from './adapters/google-chat-adapter';
 import type { ChatAdapter, IncomingMessage } from './adapters/base-adapter';
 import dotenv from 'dotenv';
 
@@ -9,6 +14,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 dotenv.config();
 
 const RESET_REGEX = /^\/reset\s*$/i;
+const WEBHOOK_PORT = parseInt(process.env.CHAT_WEBHOOK_PORT ?? '3010', 10);
 
 function createMessageHandler(
   eventBus: EventBus,
@@ -50,12 +56,34 @@ function createMessageHandler(
   };
 }
 
+function collectAdapters(app: Application): ChatAdapter[] {
+  const list: (ChatAdapter | null)[] = [
+    createTelegramAdapter(),
+    createWhatsAppAdapter(app),
+    createSlackAdapter(),
+    createLineAdapter(app),
+    createGoogleChatAdapter(app),
+  ];
+  return list.filter((a): a is ChatAdapter => a != null);
+}
+
 async function main() {
+  const app = express();
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+
+  const adapters = collectAdapters(app);
+  if (adapters.length === 0) {
+    console.warn(
+      '[ChatAgent] No chat platform configured. Set one of: TELEGRAM_BOT_TOKEN, TWILIO_ACCOUNT_SID+TWILIO_AUTH_TOKEN, SLACK_BOT_TOKEN+SLACK_APP_TOKEN, LINE_CHANNEL_ACCESS_TOKEN, GOOGLE_CHAT_PROJECT_ID or GOOGLE_CHAT_WEBHOOK_URL.'
+    );
+    process.exit(1);
+  }
+
   const eventBus = new EventBus('chat-agent-1');
   const router = new ConversationRouter();
   const handler = createMessageHandler(eventBus, router);
 
-  const adapters: ChatAdapter[] = [createTelegramAdapter()];
   for (const adapter of adapters) {
     adapter.onMessage(async (msg) => {
       if (RESET_REGEX.test(msg.text.trim())) {
@@ -74,6 +102,10 @@ async function main() {
     await adapter.start();
   }
 
+  app.listen(WEBHOOK_PORT, () => {
+    console.log(`[ChatAgent] Webhook server listening on port ${WEBHOOK_PORT}`);
+  });
+
   eventBus.subscribe('action.completed', async (event) => {
     const payload = event.payload as { conversationId?: string; result?: { output?: string } };
     if (!payload.conversationId || !payload.result?.output) return;
@@ -83,6 +115,19 @@ async function main() {
         await adapter.sendMessage(payload.conversationId, payload.result.output);
       } catch (err) {
         console.error('[ChatAgent] Error sending message:', err);
+      }
+    }
+  });
+
+  eventBus.subscribe('action.failed', async (event) => {
+    const payload = event.payload as { conversationId?: string; error?: string };
+    if (!payload.conversationId || !payload.error) return;
+    const adapter = adapters.find((a) => payload.conversationId!.startsWith(a.conversationIdPrefix));
+    if (adapter) {
+      try {
+        await adapter.sendMessage(payload.conversationId, `Error: ${payload.error}`);
+      } catch (err) {
+        console.error('[ChatAgent] Error sending failure message:', err);
       }
     }
   });
