@@ -1,4 +1,6 @@
 #!/bin/bash
+# Start Jellyfish (build + run agents). Does NOT pull from GitHub.
+# To get latest code and start:  ./update.sh   or:  git pull && ./start.sh
 cd "$(dirname "$0")"
 
 # Node 18+ required
