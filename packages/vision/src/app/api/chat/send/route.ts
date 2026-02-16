@@ -1,19 +1,92 @@
 import path from 'path'
 import fs from 'fs'
 import { NextRequest } from 'next/server'
-import { EventBus } from '@jellyfish/shared'
 import dotenv from 'dotenv'
 
-// Use same .env as start.sh so Redis and env match Memory/Core/Chat
 const rootEnv = [path.join(process.cwd(), '.env'), path.join(process.cwd(), '..', '..', '.env')].find((p) => fs.existsSync(p))
 if (rootEnv) dotenv.config({ path: rootEnv })
 
+const ROOT = path.resolve(process.cwd(), '..', '..')
 const WEB_PREFIX = 'web_'
-const POLL_MS = 200
-const MAX_WAIT_MS = 55_000
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
+
+function getDbPath(): string {
+  const url = process.env.DATABASE_URL?.trim()
+  if (url && path.isAbsolute(url)) return url
+  // Memory runs from packages/memory so relative paths are from there
+  if (url) return path.join(ROOT, 'packages', 'memory', url)
+  return path.join(ROOT, 'packages', 'memory', 'sqlite.db')
+}
+
+function getSystemPrompt(): string {
+  const p = path.join(ROOT, 'packages', 'vision', 'data', 'system-prompts.json')
+  try {
+    const raw = fs.readFileSync(p, 'utf-8')
+    const data = JSON.parse(raw) as Record<string, string>
+    return (data.core ?? 'You are Jellyfish, a helpful AI assistant.').trim()
+  } catch {
+    return 'You are Jellyfish, a helpful AI assistant.'
+  }
+}
+
+function getLLMConfig(): { apiKey: string; baseURL: string; model: string; headers?: Record<string, string> } {
+  const provider = (process.env.LLM_PROVIDER ?? '').toLowerCase()
+  if (provider === 'openai') {
+    const apiKey = process.env.OPENAI_API_KEY?.trim() ?? ''
+    if (!apiKey) throw new Error('OPENAI_API_KEY is required when LLM_PROVIDER=openai')
+    return {
+      apiKey,
+      baseURL: 'https://api.openai.com/v1',
+      model: process.env.AI_MODEL ?? 'gpt-4o',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    }
+  }
+  if (provider === 'openrouter' || process.env.OPENROUTER_API_KEY?.trim()) {
+    const apiKey = process.env.OPENROUTER_API_KEY?.trim() ?? ''
+    if (!apiKey) throw new Error('OPENROUTER_API_KEY is required')
+    const headers: Record<string, string> = { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' }
+    headers['HTTP-Referer'] = process.env.LLM_HTTP_REFERER ?? 'https://github.com/IronValleyLabs/jellyfish'
+    headers['X-Title'] = process.env.LLM_X_TITLE ?? 'Jellyfish'
+    return { apiKey, baseURL: 'https://openrouter.ai/api/v1', model: process.env.AI_MODEL ?? 'anthropic/claude-3.5-sonnet', headers }
+  }
+  if (process.env.OPENAI_API_KEY?.trim()) {
+    const apiKey = process.env.OPENAI_API_KEY.trim()
+    return {
+      apiKey,
+      baseURL: 'https://api.openai.com/v1',
+      model: process.env.AI_MODEL ?? 'gpt-4o',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    }
+  }
+  throw new Error('Set OPENROUTER_API_KEY or OPENAI_API_KEY in .env')
+}
+
+async function generateResponseSync(
+  systemPrompt: string,
+  history: Array<{ role: string; content: string }>,
+  currentMessage: string
+): Promise<string> {
+  const { baseURL, model, headers } = getLLMConfig()
+  const messages = [
+    { role: 'system' as const, content: systemPrompt },
+    ...history.map((h) => ({ role: h.role as 'user' | 'assistant', content: h.content })),
+    { role: 'user' as const, content: currentMessage },
+  ]
+  const res = await fetch(`${baseURL}/chat/completions`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ model, messages, temperature: 0.7, max_tokens: 500 }),
+  })
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`LLM request failed: ${res.status} ${err}`)
+  }
+  const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
+  const content = data.choices?.[0]?.message?.content?.trim()
+  return content ?? 'Sorry, I could not generate a response.'
+}
 
 export async function POST(request: NextRequest) {
   let body: { text?: string; conversationId?: string }
@@ -32,63 +105,61 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: 'text is required' }, { status: 400 })
   }
 
-  const eventBus = new EventBus('vision-web-chat')
-  const result = { output: null as string | null, error: null as string | null }
-
-  const onCompleted = (event: { payload?: { conversationId?: string; result?: { output?: string } } }) => {
-    const p = event.payload
-    if (p?.conversationId === conversationId && p?.result?.output) {
-      result.output = p.result.output
-      console.log('[Chat/send] Received action.completed for', conversationId)
-    }
-  }
-  const onFailed = (event: { payload?: { conversationId?: string; error?: string } }) => {
-    const p = event.payload
-    if (p?.conversationId === conversationId && p?.error) {
-      result.error = p.error
-      console.log('[Chat/send] Received action.failed for', conversationId, p.error)
-    }
-  }
-
+  // Direct sync path for dashboard chat: no Redis, same DB as Memory, call LLM from here
   try {
-    await Promise.all([
-      eventBus.subscribeAndWait('action.completed', onCompleted),
-      eventBus.subscribeAndWait('action.failed', onFailed),
-    ])
+    const dbPath = getDbPath()
+    const Database = require('better-sqlite3') as typeof import('better-sqlite3')
+    const db = new Database(dbPath)
+
+    const tableExists = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='messages'").get()
+    if (!tableExists) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS messages (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          conversation_id TEXT NOT NULL,
+          role TEXT NOT NULL,
+          content TEXT NOT NULL,
+          timestamp INTEGER NOT NULL,
+          user_id TEXT,
+          platform TEXT,
+          agent_id TEXT
+        )
+      `)
+    }
+
+    const now = Date.now()
+    db.prepare(
+      'INSERT INTO messages (conversation_id, role, content, timestamp, user_id, platform) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(conversationId, 'user', text, now, 'web-user', 'web')
+
+    const rows = db
+      .prepare(
+        'SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY timestamp DESC LIMIT 20'
+      )
+      .all(conversationId) as Array<{ role: string; content: string }>
+    const history = rows.reverse()
+
+    const systemPrompt = getSystemPrompt()
+    const content = await generateResponseSync(systemPrompt, history, text)
+
+    db.prepare(
+      'INSERT INTO messages (conversation_id, role, content, timestamp, user_id, platform, agent_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).run(conversationId, 'assistant', content, Date.now(), null, 'web', 'core-agent-1')
+
+    db.close()
+
+    return Response.json({ output: content })
   } catch (err) {
-    console.error('[Chat/send] Redis subscribe failed:', err)
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[Chat/send] Sync response failed:', message)
     return Response.json(
-      { error: 'Could not connect to Redis. Is it running? Set REDIS_HOST in .env and run ./start.sh.' },
-      { status: 503 }
+      {
+        error:
+          message.includes('OPENROUTER') || message.includes('OPENAI')
+            ? 'Missing or invalid API key. Set OPENROUTER_API_KEY or OPENAI_API_KEY in .env'
+            : message,
+      },
+      { status: 500 }
     )
   }
-
-  console.log('[Chat/send] Publishing message.received', conversationId, 'text length:', text.length)
-  await eventBus.publish('message.received', {
-    platform: 'web',
-    userId: 'web-user',
-    conversationId,
-    text,
-    targetAgentId: undefined,
-  })
-
-  const deadline = Date.now() + MAX_WAIT_MS
-  while (Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, POLL_MS))
-    if (result.error) {
-      return Response.json({ error: result.error }, { status: 200 })
-    }
-    if (result.output) {
-      return Response.json({ output: result.output })
-    }
-  }
-
-  console.warn('[Chat/send] Timeout for', conversationId, '- no action.completed/action.failed received. Check Memory, Core and Chat processes and Redis.')
-  return Response.json(
-    {
-      error:
-        'Timeout waiting for response. Check that Memory, Core and Chat are running (./start.sh), Redis is up, and OPENROUTER_API_KEY or OPENAI_API_KEY is set in .env.',
-    },
-    { status: 504 }
-  )
 }

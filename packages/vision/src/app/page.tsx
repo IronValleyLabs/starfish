@@ -218,7 +218,7 @@ export default function Dashboard() {
             </div>
 
             {Object.keys(mainProcesses).length > 0 && (
-              <div className="mb-8 flex flex-wrap items-center gap-4 px-2 py-3 bg-ocean-900/30 border border-ocean-700/50 rounded-xl">
+              <div className="mb-6 flex flex-wrap items-center gap-4 px-2 py-3 bg-ocean-900/30 border border-ocean-700/50 rounded-xl">
                 <span className="text-sm text-ocean-500">System agents</span>
                 {['memory', 'core', 'action', 'chat', 'vision'].map((name) => {
                   const s = mainProcesses[name]
@@ -232,6 +232,54 @@ export default function Dashboard() {
                 })}
               </div>
             )}
+
+            {/* Main Jellyfish = orchestrator (Core) that replies when no Mini Jelly is mentioned */}
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold text-ocean-100 mb-4">
+                Jellyfish (orchestrator)
+              </h2>
+              <div className="bg-ocean-900/50 backdrop-blur-sm border border-ocean-600/50 rounded-xl p-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-4">
+                    <div className="text-4xl">🪼</div>
+                    <div>
+                      <div className="flex items-center gap-3 mb-1">
+                        <h3 className="text-lg font-semibold text-ocean-100">
+                          Default agent
+                        </h3>
+                        {mainProcesses.core && (
+                          <span className="flex items-center gap-1.5 text-xs" title={mainProcesses.core.online ? `Online (PID ${mainProcesses.core.pid})` : 'Offline'}>
+                            <span className={`w-2 h-2 rounded-full ${mainProcesses.core.online ? 'bg-green-400 animate-pulse' : 'bg-gray-500'}`} />
+                            {mainProcesses.core.online ? 'Online' : 'Offline'}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-ocean-400 mb-3">
+                        Replies in Chat and Telegram when you don&apos;t mention a Mini Jelly. This is the main Jellyfish that can coordinate and delegate to your team.
+                      </p>
+                      <p className="text-sm text-ocean-500 mb-2">
+                        Last action: {coreMetrics.lastAction}
+                        {coreMetrics.lastActionTime > 0 && (
+                          <span className="text-ocean-600 ml-1">({formatRelative(coreMetrics.lastActionTime)})</span>
+                        )}
+                      </p>
+                      <div className="flex items-center gap-6 text-sm text-ocean-400">
+                        <span>Actions today: <strong className="text-ocean-200">{coreMetrics.actionsToday}</strong></span>
+                        <span>AI cost: <strong className="text-ocean-200">${coreMetrics.costToday.toFixed(2)}</strong></span>
+                      </div>
+                    </div>
+                  </div>
+                  <Link
+                    href="/prompts/core"
+                    className="flex items-center gap-2 px-4 py-2 bg-ocean-700/50 hover:bg-ocean-700 text-ocean-300 rounded-lg transition-colors text-sm"
+                    title="Edit orchestrator prompt"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Edit prompt
+                  </Link>
+                </div>
+              </div>
+            </div>
 
             <div>
               <h2 className="text-xl font-semibold text-ocean-100 mb-4">
