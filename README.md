@@ -81,6 +81,12 @@ Edit `.env`. Main variables:
 | **Draft LLM** (optional) | Use a cheaper model for copies, captions, emails (saves tokens on main model). |
 | `DRAFT_OPENAI_API_KEY` | e.g. your ChatGPT/OpenAI key; used only for "draft" writing tasks |
 | `DRAFT_AI_MODEL` | e.g. `gpt-4o-mini` (default) |
+| **Image (Nano Banana Pro)** | |
+| `NANO_BANANA_PRO_API_KEY` | Get at [nanobnana.com](https://nanobnana.com/dashboard/api-keys); for generate_image intent |
+| **Instagram (browser)** | |
+| `INSTAGRAM_USER`, `INSTAGRAM_PASSWORD` | For instagram_post intent |
+| **Metricool (browser)** | |
+| `METRICOOL_EMAIL`, `METRICOOL_PASSWORD` | For metricool_schedule intent |
 | **Redis** | |
 | `REDIS_HOST` | Redis host (default `localhost`) |
 | `REDIS_PORT` | Redis port (default `6379`) |
@@ -176,7 +182,7 @@ Ensure Node 18+ is active (`node -v`). If you still see a build error, open an i
 - **KPIs and goals** — Each agent has configurable KPIs and goals; the system prompt tells them to work towards these and report findings and recommendations to the human.
 - **Draft LLM** — Optional secondary model (e.g. ChatGPT / `gpt-4o-mini`). Set `DRAFT_OPENAI_API_KEY` and optionally `DRAFT_AI_MODEL` in `.env`. When the user asks for copies, captions, emails, or posts, the **draft** intent sends the task to this model so the main LLM is only used for reasoning; writing cost is on the draft model (often cheaper).
 - **Access notes** — Per-agent “Access & credentials” field describes what the agent can use (e.g. “Instagram login in 1Password”, “Metricool API key in .env”). The agent sees this and can tell the human what it can or cannot do.
-- **Tools** — Chat, safe bash, web search, and draft (writing). No browser or third-party APIs yet.
+- **Tools** — Chat, safe bash, web search, draft (writing), generate_image (DALL·E 3), instagram_post (Puppeteer), metricool_schedule (Puppeteer).
 
 **Missing for e.g. “Social Media Manager: here’s the Instagram account, do copies, schedule in Metricool”**
 

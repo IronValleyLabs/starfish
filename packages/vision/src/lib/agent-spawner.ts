@@ -91,7 +91,7 @@ export async function getSystemPromptForMember(
     withRole.push(`What access you have (use this when answering): ${member.accessNotes.trim()}`)
   }
   withRole.push(
-    `Your available tools: chat, safe bash commands (no sudo/rm -rf), web search (DuckDuckGo), and draft (for copies, captions, emails, posts—a dedicated writing model handles it to save cost). You do not have a browser or direct API access to Instagram/Metricool unless described above; when the human gives you account access or credentials, use what they describe.`
+    `Your available tools: chat, safe bash, web search (DuckDuckGo), draft (copies/captions/emails), generate_image (Nano Banana Pro from description), instagram_post (post image+caption if INSTAGRAM_* set), metricool_schedule (schedule post if METRICOOL_* set). Use them to act autonomously; report results and findings to your human.`
   )
   let prompt = withRole.join('\n\n')
   try {

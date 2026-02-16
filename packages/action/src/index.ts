@@ -3,6 +3,8 @@ import { EventBus, MetricsCollector } from '@jellyfish/shared';
 import { BashExecutor } from './bash-executor';
 import { WebSearcher } from './web-searcher';
 import { DraftExecutor } from './draft-executor';
+import { ImageExecutor } from './image-executor';
+import { BrowserRunner } from './browser-runner';
 import dotenv from 'dotenv';
 
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
@@ -10,7 +12,17 @@ dotenv.config();
 
 interface IntentPayload {
   intent?: string;
-  params?: { command?: string; query?: string; text?: string; prompt?: string };
+  params?: {
+    command?: string;
+    query?: string;
+    text?: string;
+    prompt?: string;
+    size?: string;
+    caption?: string;
+    imagePathOrUrl?: string;
+    content?: string;
+    scheduledDate?: string;
+  };
   conversationId?: string;
   agentId?: string;
 }
@@ -20,6 +32,8 @@ class ActionAgent {
   private bashExecutor: BashExecutor;
   private webSearcher: WebSearcher;
   private draftExecutor: DraftExecutor;
+  private imageExecutor: ImageExecutor;
+  private browserRunner: BrowserRunner;
   private metrics: MetricsCollector;
 
   constructor() {
@@ -28,10 +42,12 @@ class ActionAgent {
     this.bashExecutor = new BashExecutor();
     this.webSearcher = new WebSearcher();
     this.draftExecutor = new DraftExecutor();
+    this.imageExecutor = new ImageExecutor();
+    this.browserRunner = new BrowserRunner();
     this.metrics = new MetricsCollector();
-    if (this.draftExecutor.isEnabled()) {
-      console.log('[ActionAgent] Draft LLM enabled (for copies/writing)');
-    }
+    if (this.draftExecutor.isEnabled()) console.log('[ActionAgent] Draft LLM enabled');
+    if (this.imageExecutor.isEnabled()) console.log('[ActionAgent] Image generation (Nano Banana Pro) enabled');
+    if (this.browserRunner.isAvailable()) console.log('[ActionAgent] Browser (Puppeteer) available');
     this.setupSubscriptions();
   }
 
@@ -48,15 +64,30 @@ class ActionAgent {
             );
             break;
           case 'websearch':
-            const searchResult = await this.webSearcher.search(
-              payload.params?.query || ''
-            );
-            result = { output: searchResult };
+            result = { output: await this.webSearcher.search(payload.params?.query || '') };
             break;
           case 'draft':
             result = await this.draftExecutor.execute(
               payload.params?.prompt || ''
             );
+            break;
+          case 'generate_image':
+            result = await this.imageExecutor.execute(
+              payload.params?.prompt || '',
+              payload.params?.size
+            );
+            break;
+          case 'instagram_post':
+            result = await this.browserRunner.run('instagram_post', {
+              caption: payload.params?.caption || '',
+              imagePathOrUrl: payload.params?.imagePathOrUrl || payload.params?.prompt || '',
+            });
+            break;
+          case 'metricool_schedule':
+            result = await this.browserRunner.run('metricool_schedule', {
+              content: payload.params?.content || payload.params?.prompt || '',
+              scheduledDate: payload.params?.scheduledDate,
+            });
             break;
           case 'response':
             result = { output: payload.params?.text || 'No response' };
