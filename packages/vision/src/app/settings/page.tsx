@@ -257,6 +257,59 @@ export default function Settings() {
               </div>
             </div>
           </div>
+
+          {/* APIs & Documentation */}
+          <div className="bg-ocean-900/50 backdrop-blur-sm border border-ocean-700/50 rounded-xl p-6">
+            <h2 className="text-lg font-semibold text-ocean-100 mb-4">
+              APIs & Documentation
+            </h2>
+            <p className="text-sm text-ocean-400 mb-4">
+              Dashboard APIs and where to find package configuration (Memory, Core, Chat, Action) in the repo.
+            </p>
+            <div className="space-y-3 text-sm">
+              <div>
+                <p className="font-medium text-ocean-300 mb-1">Team API</p>
+                <p className="text-ocean-500 font-mono">
+                  GET/POST /api/team — list, add, update, remove Mini Jellys
+                </p>
+              </div>
+              <div>
+                <p className="font-medium text-ocean-300 mb-1">Live events</p>
+                <p className="text-ocean-500 font-mono">
+                  GET /api/events — SSE stream (Redis)
+                </p>
+              </div>
+              <div className="pt-2 flex flex-wrap gap-2">
+                <Link
+                  href="/logs"
+                  className="px-3 py-1.5 bg-ocean-700/50 hover:bg-ocean-700 text-ocean-300 rounded-lg"
+                >
+                  Live Logs
+                </Link>
+                <Link
+                  href="/prompts/core"
+                  className="px-3 py-1.5 bg-ocean-700/50 hover:bg-ocean-700 text-ocean-300 rounded-lg"
+                >
+                  Core prompt
+                </Link>
+                <Link
+                  href="/prompts/memory"
+                  className="px-3 py-1.5 bg-ocean-700/50 hover:bg-ocean-700 text-ocean-300 rounded-lg"
+                >
+                  Memory prompt
+                </Link>
+                <Link
+                  href="/prompts/action"
+                  className="px-3 py-1.5 bg-ocean-700/50 hover:bg-ocean-700 text-ocean-300 rounded-lg"
+                >
+                  Action prompt
+                </Link>
+              </div>
+              <p className="text-ocean-500 text-xs pt-2">
+                Package config (env, events, commands): see <code className="bg-ocean-800/50 px-1 rounded">docs/</code> in the project root (memory.md, core.md, chat.md, action.md, vision.md).
+              </p>
+            </div>
+          </div>
         </div>
       </main>
     </div>

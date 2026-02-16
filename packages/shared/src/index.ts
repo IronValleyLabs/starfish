@@ -11,6 +11,7 @@ export interface Event {
   payload: EventPayload;
   timestamp: number;
   correlationId: string;
+  agentId?: string;
 }
 
 // Tipos de Payloads Específicos

@@ -4,6 +4,8 @@ dist/
 *.db-shm
 *.db-wal
 .env
+.env.local
+.next/
 .DS_Store
 whatsapp_auth_info/
 drizzle/

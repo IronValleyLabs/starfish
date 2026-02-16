@@ -1,16 +1,16 @@
 {
-  "name": "@starfish/memory",
+  "name": "@jellyfish/memory",
   "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "dev": "pnpm -C ../.. exec pnpm --filter @starfish/shared run build && tsc && node dist/index.js",
+    "dev": "pnpm -C ../.. exec pnpm --filter @jellyfish/shared run build && tsc && node dist/index.js",
     "db:push": "drizzle-kit push:sqlite"
   },
   "dependencies": {
-    "@starfish/shared": "workspace:*",
+    "@jellyfish/shared": "workspace:*",
     "drizzle-orm": "^0.29.4",
-    "better-sqlite3": "^9.4.1",
+    "better-sqlite3": "9.4.1",
     "dotenv": "^16.4.5"
   },
   "devDependencies": {

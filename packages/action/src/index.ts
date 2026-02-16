@@ -1,5 +1,5 @@
 import path from 'path';
-import { EventBus } from '@starfish/shared';
+import { EventBus } from '@jellyfish/shared';
 import { BashExecutor } from './bash-executor';
 import { WebSearcher } from './web-searcher';
 import dotenv from 'dotenv';

@@ -31,6 +31,7 @@ export class EventBus {
       payload,
       timestamp: Date.now(),
       correlationId: correlationId || randomUUID(),
+      agentId: this.agentId,
     };
     console.log(`[EventBus] Publicando evento: ${name}`, { agent: this.agentId, correlationId: event.correlationId });
     await this.publisher.publish(name, JSON.stringify(event));

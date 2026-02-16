@@ -6,7 +6,7 @@
     "composite": false,
     "baseUrl": ".",
     "paths": {
-      "@starfish/shared": ["../shared/dist"]
+      "@jellyfish/shared": ["../shared/dist"]
     }
   },
   "include": ["src"]

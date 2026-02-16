@@ -1,5 +1,5 @@
 import path from 'path';
-import { EventBus, ContextLoadedPayload } from '@starfish/shared';
+import { EventBus, ContextLoadedPayload } from '@jellyfish/shared';
 import { AIProcessor } from './ai-processor';
 import dotenv from 'dotenv';
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });

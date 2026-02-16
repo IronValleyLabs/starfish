@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
 import path from 'path';
-import { EventBus, MessageReceivedPayload } from '@starfish/shared';
+import { EventBus, MessageReceivedPayload } from '@jellyfish/shared';
 import * as schema from './schema';
 import { eq, desc } from 'drizzle-orm';
 import dotenv from 'dotenv';

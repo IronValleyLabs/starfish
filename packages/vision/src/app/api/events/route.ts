@@ -1,29 +1,55 @@
-import path from 'path'
-import { EventBus } from '@starfish/shared'
+import { NextRequest } from 'next/server'
+import Redis from 'ioredis'
 
-// Load root monorepo .env so REDIS_HOST is available
-import dotenv from 'dotenv'
-dotenv.config({ path: path.resolve(process.cwd(), '../../.env') })
-dotenv.config()
-
+export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const encoder = new TextEncoder()
+
   const stream = new ReadableStream({
-    start(controller) {
-      const eventBus = new EventBus('vision-agent-1')
-      const events = [
+    async start(controller) {
+      const subscriber = new Redis({
+        host: process.env.REDIS_HOST || 'localhost',
+        port: Number(process.env.REDIS_PORT) || 6379,
+      })
+
+      const channels = [
         'message.received',
         'context.loaded',
         'intent.detected',
         'action.completed',
         'action.failed',
-      ] as const
-      events.forEach((eventName) => {
-        eventBus.subscribe(eventName, (event) => {
-          const data = `data: ${JSON.stringify(event)}\n\n`
-          controller.enqueue(new TextEncoder().encode(data))
-        })
+      ]
+
+      await subscriber.subscribe(...channels)
+
+      subscriber.on('message', (channel, message) => {
+        try {
+          const event = JSON.parse(message)
+          const data = {
+            id: event.id,
+            timestamp: event.timestamp,
+            agent: event.agentId ?? 'unknown',
+            eventName: channel,
+            payload: event.payload,
+            correlationId: event.correlationId,
+          }
+          const sseMessage = `data: ${JSON.stringify(data)}\n\n`
+          controller.enqueue(encoder.encode(sseMessage))
+        } catch (error) {
+          console.error('Error parsing event:', error)
+        }
+      })
+
+      const heartbeat = setInterval(() => {
+        controller.enqueue(encoder.encode(': heartbeat\n\n'))
+      }, 30000)
+
+      request.signal.addEventListener('abort', () => {
+        clearInterval(heartbeat)
+        subscriber.disconnect()
+        controller.close()
       })
     },
   })

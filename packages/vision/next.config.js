@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@starfish/shared'],
+  transpilePackages: ['@jellyfish/shared'],
 }
 module.exports = nextConfig

@@ -1,6 +1,6 @@
 import path from 'path';
 import { Telegraf } from 'telegraf';
-import { EventBus } from '@starfish/shared';
+import { EventBus } from '@jellyfish/shared';
 import dotenv from 'dotenv';
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 dotenv.config();

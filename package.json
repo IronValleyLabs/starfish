@@ -2,7 +2,7 @@
   "name": "jellyfish-monorepo",
   "private": true,
   "scripts": {
-    "build": "pnpm --filter @starfish/shared run build && pnpm -r --filter '@starfish/core' --filter '@starfish/memory' --filter '@starfish/chat' run build",
+    "build": "pnpm --filter @jellyfish/shared run build && pnpm -r --filter '@jellyfish/core' --filter '@jellyfish/memory' --filter '@jellyfish/chat' run build",
     "dev": "pnpm --filter './packages/*' dev"
   },
   "devDependencies": {
