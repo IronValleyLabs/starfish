@@ -1,10 +1,10 @@
 #!/bin/bash
 cd "$(dirname "$0")"
 
-# Node 20 required: better-sqlite3 does not build on Node 24 (C++20 headers)
+# Node 18 or 20 required: better-sqlite3 does not build on Node 21+
 NODE_MAJOR=$(node -v 2>/dev/null | sed 's/v\([0-9]*\).*/\1/')
-if [ -n "$NODE_MAJOR" ] && [ "$NODE_MAJOR" -ge 24 ]; then
-  echo "⚠️  Node 24+ detected. Memory agent (better-sqlite3) needs Node 20."
+if [ -n "$NODE_MAJOR" ] && [ "$NODE_MAJOR" -ge 21 ]; then
+  echo "⚠️  Node $NODE_MAJOR is not supported. Memory agent (better-sqlite3) needs Node 18 or 20."
   echo "   Run: nvm use 20   (or install Node 20 and use it)"
   echo "   Then run ./start.sh again."
   exit 1

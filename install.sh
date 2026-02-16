@@ -69,13 +69,33 @@ if [ "$NODE_MAJOR" -lt 18 ]; then
   fi
   exit 1
 fi
+if [ "$NODE_MAJOR" -ge 21 ]; then
+  echo -e "${RED}❌ Node.js $NODE_MAJOR is not supported. The Memory agent uses better-sqlite3, which only builds on Node 18 or 20.${NC}"
+  echo ""
+  echo "Switch to Node 20 and run the installer again:"
+  if command -v nvm &> /dev/null; then
+    echo "  nvm install 20"
+    echo "  nvm use 20"
+    echo "  ./install.sh"
+  elif [[ "$OS" == "macos" ]]; then
+    echo "  brew install node@20"
+    echo "  brew unlink node && brew link --overwrite node@20"
+    echo "  Or use nvm: https://github.com/nvm-sh/nvm"
+  elif [[ "$OS" == "linux" ]]; then
+    echo "  nvm install 20 && nvm use 20"
+    echo "  Or: https://nodejs.org (download Node 20 LTS)"
+  else
+    echo "  https://nodejs.org (download Node 20 LTS)"
+  fi
+  exit 1
+fi
 echo -e "${GREEN}✅ Node.js $(node -v)${NC}"
 
 # --- 3. pnpm ---
 echo ""
 echo -e "${BLUE}Checking pnpm...${NC}"
 if ! command -v pnpm &> /dev/null; then
-  echo -e "${YELLOW}Installing pnpm...${NC}"
+  echo -e "${YELLOW}Installing pnpm globally (may take ~1 min)...${NC}"
   npm install -g pnpm
 fi
 echo -e "${GREEN}✅ pnpm $(pnpm -v)${NC}"
@@ -103,6 +123,7 @@ elif [ -d "jellyfish" ]; then
 else
   # To install from a different repo: JELLYFISH_REPO_URL=https://github.com/org/repo.git ./install.sh
   REPO_URL="${JELLYFISH_REPO_URL:-https://github.com/IronValleyLabs/jellyfish.git}"
+  echo -e "${BLUE}Cloning repository (may take a minute)...${NC}"
   git clone "$REPO_URL" jellyfish
   cd jellyfish
   INSTALL_DIR="."
@@ -112,7 +133,7 @@ cd "$INSTALL_DIR"
 
 # --- 5. Dependencies ---
 echo ""
-echo -e "${BLUE}Installing dependencies...${NC}"
+echo -e "${BLUE}Installing dependencies (this may take 1–3 minutes)...${NC}"
 pnpm install
 echo -e "${GREEN}✅ Dependencies installed. Almost there.${NC}"
 
