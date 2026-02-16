@@ -1,0 +1,19 @@
+{
+  "name": "@starfish/action",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "pnpm -C ../.. exec pnpm --filter @starfish/shared run build && tsc && node dist/index.js"
+  },
+  "dependencies": {
+    "@starfish/shared": "workspace:*",
+    "axios": "^1.6.7",
+    "cheerio": "^1.0.0-rc.12",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/node": "^20.11.20"
+  }
+}

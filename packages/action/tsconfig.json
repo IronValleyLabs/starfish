@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "composite": false,
+    "baseUrl": ".",
+    "paths": {
+      "@starfish/shared": ["../shared/dist"]
+    }
+  },
+  "include": ["src"]
+}
