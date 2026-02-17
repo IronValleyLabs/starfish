@@ -41,6 +41,29 @@ Salida: `packaging\out\windows\Jellyfish\` y `Jellyfish-win-x64.zip`. El usuario
   - Mac: pon un binario `redis-server` en `packaging/resources/mac/` (por ejemplo compilado desde [Redis](https://redis.io/download) o desde Homebrew) y vuelve a ejecutar `build.sh`.
   - Windows: pon `redis-server.exe` en `packaging/resources/windows/` (p. ej. desde [tporadowski/redis](https://github.com/tporadowski/redis/releases)) y vuelve a ejecutar `build.ps1`.
 
+## Release y botón "Descargar" en tu web
+
+Para que tu web tenga un botón de descarga que apunte a los instaladores:
+
+1. **Genera los archivos** (en Mac y en Windows, o en CI):
+   - Mac: `./packaging/mac/build.sh` y luego el .dmg (comando de más arriba). Resultado: `Jellyfish.dmg`.
+   - Windows: `.\packaging\windows\build.ps1`. Resultado: `Jellyfish-win-x64.zip`.
+
+2. **Crea un release en GitHub:**
+   - Repo → **Releases** → **Create a new release**.
+   - Tag (ej. `v1.0.0`), título y descripción.
+   - En **Attach binaries**, sube `Jellyfish.dmg` y `Jellyfish-win-x64.zip`.
+   - Publica el release.
+
+3. **Enlaces para tu web:**
+   - Página del último release:  
+     `https://github.com/IronValleyLabs/jellyfish/releases/latest`
+   - Descarga directa (sustituye `VERSION` por el tag, ej. `v1.0.0`):
+     - Mac: `https://github.com/IronValleyLabs/jellyfish/releases/download/VERSION/Jellyfish.dmg`
+     - Windows: `https://github.com/IronValleyLabs/jellyfish/releases/download/VERSION/Jellyfish-win-x64.zip`
+
+En tu web puedes poner dos botones: "Descargar para Mac" y "Descargar para Windows" con esas URLs (con el tag concreto, o usar la API de GitHub para obtener la URL del último release si quieres que sea siempre "latest").
+
 ## Resumen
 
 | Quién              | Cómo                          |
