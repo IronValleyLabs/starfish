@@ -74,5 +74,15 @@ Set-Content -Path (Join-Path $BUNDLE "Run Jellyfish.bat") -Value $bat -Encoding 
 Write-Host "Done: $BUNDLE"
 Write-Host "Creating zip..."
 $zipPath = Join-Path $OUT "Jellyfish-win-x64.zip"
-Compress-Archive -Path $BUNDLE -DestinationPath $zipPath -Force
+# Use 7-Zip if available (handles long paths); fallback to Compress-Archive
+$use7z = $false
+if (Get-Command 7z -ErrorAction SilentlyContinue) { $use7z = $true }
+elseif (Test-Path "C:\Program Files\7-Zip\7z.exe") { $use7z = $true; $env:PATH = "C:\Program Files\7-Zip;$env:PATH" }
+if ($use7z) {
+    & 7z a -tzip $zipPath $BUNDLE | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "7z failed with exit $LASTEXITCODE" }
+} else {
+    Compress-Archive -Path $BUNDLE -DestinationPath $zipPath -Force
+}
 Write-Host "Zip: $zipPath"
+if (Test-Path $zipPath) { Write-Host "Zip size: $((Get-Item $zipPath).Length / 1MB) MB" }

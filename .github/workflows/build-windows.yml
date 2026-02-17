@@ -20,6 +20,8 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Setup 7-Zip
+        uses: milliewalky/setup-7-zip@v2
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -45,6 +47,12 @@ jobs:
         run: |
           Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
           & .\packaging\windows\build.ps1
+          if (-not (Test-Path "packaging\out\windows\Jellyfish-win-x64.zip")) {
+            Write-Error "Zip was not created"
+            Get-ChildItem -Path "packaging\out\windows" -Recurse -Depth 1 | Format-Table Name, Length
+            exit 1
+          }
+          Get-Item "packaging\out\windows\Jellyfish-win-x64.zip" | Select-Object Name, @{N='SizeMB';E={[math]::Round($_.Length/1MB,2)}}
 
       - name: Upload Windows zip
         uses: actions/upload-artifact@v4
@@ -54,7 +62,8 @@ jobs:
 
       - name: Upload to release
         if: inputs.release_tag != ''
+        shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${{ inputs.release_tag }}" packaging/out/windows/Jellyfish-win-x64.zip --repo ${{ github.repository }} --clobber
+          gh release upload "${{ inputs.release_tag }}" "packaging/out/windows/Jellyfish-win-x64.zip" --repo ${{ github.repository }} --clobber
