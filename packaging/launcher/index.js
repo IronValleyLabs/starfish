@@ -77,17 +77,20 @@ function ensureConfig() {
   const configDir = getConfigDir();
   if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
   const configEnv = path.join(configDir, '.env');
-  const projectEnv = path.join(PROJECT, '.env');
   const examplePath = path.join(PROJECT, '.env.example');
+  // Only read/write in config dir — never write into the app bundle (fails under App Translocation / read-only)
   if (fs.existsSync(configEnv)) {
-    fs.copyFileSync(configEnv, projectEnv);
-    return loadEnvFile(projectEnv);
+    return loadEnvFile(configEnv);
   }
   if (fs.existsSync(examplePath)) {
-    fs.copyFileSync(examplePath, configEnv);
-    fs.copyFileSync(examplePath, projectEnv);
+    try {
+      fs.copyFileSync(examplePath, configEnv);
+    } catch (e) {
+      log('Could not write default .env to config dir: ' + e.message);
+    }
+    return loadEnvFile(configEnv);
   }
-  return loadEnvFile(projectEnv);
+  return loadEnvFile(configEnv);
 }
 
 function waitForUrl(url, timeoutMs) {
