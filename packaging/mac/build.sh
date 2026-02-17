@@ -55,6 +55,13 @@ echo "App copied."
 mkdir -p "$RESOURCES/launcher"
 cp "$REPO_ROOT/packaging/launcher/index.js" "$RESOURCES/launcher/"
 
+# 5b. App icon (if present; create from PNG with packaging/resources/mac/make-icns.sh)
+HAS_ICON=0
+if [ -f "$REPO_ROOT/packaging/resources/mac/AppIcon.icns" ]; then
+  cp "$REPO_ROOT/packaging/resources/mac/AppIcon.icns" "$RESOURCES/"
+  HAS_ICON=1
+fi
+
 # 6. macOS .app entry point
 mkdir -p "$APP/Contents/MacOS"
 cat > "$APP/Contents/MacOS/Jellyfish" << 'LAUNCHER'
@@ -65,7 +72,29 @@ LAUNCHER
 chmod +x "$APP/Contents/MacOS/Jellyfish"
 
 # 7. Info.plist
-cat > "$APP/Contents/Info.plist" << 'PLIST'
+if [ "$HAS_ICON" = "1" ]; then
+  cat > "$APP/Contents/Info.plist" << 'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleExecutable</key>
+  <string>Jellyfish</string>
+  <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.jellyfish.app</string>
+  <key>CFBundleName</key>
+  <string>Jellyfish</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>NSHighResolutionCapable</key>
+  <true/>
+</dict>
+</plist>
+PLIST
+else
+  cat > "$APP/Contents/Info.plist" << 'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -83,6 +112,7 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
 </dict>
 </plist>
 PLIST
+fi
 
 echo "Done: $APP"
 echo "To create a .dmg: hdiutil create -volname Jellyfish -srcfolder $APP -ov -format UDZO $OUT/Jellyfish.dmg"

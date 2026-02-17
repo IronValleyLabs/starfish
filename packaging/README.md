@@ -15,7 +15,7 @@ Desde la raíz del repo:
 ./packaging/mac/build.sh
 ```
 
-Salida: `packaging/out/mac/Jellyfish.app`. Arrastra a Aplicaciones o ábrelo con doble clic.
+Salida: `packaging/out/mac/Jellyfish.app`. Arrastra a Aplicaciones o ábrelo con doble clic. La app usa el icono de `packaging/resources/mac/AppIcon.icns` si existe (para cambiarlo: edita `AppIcon.png` y ejecuta `bash packaging/resources/mac/make-icns.sh`).
 
 Para crear un .dmg (opcional):
 
