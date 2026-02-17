@@ -36,21 +36,24 @@ if (Test-Path $redisSrc) {
     Write-Host "No packaging\resources\windows\redis-server.exe — app will use Redis from config (e.g. Redis Cloud)."
 }
 
-# 3. Build the project
-Write-Host "Installing dependencies and building..."
-Set-Location $REPO_ROOT
-pnpm install
-pnpm build
-pnpm --filter @jellyfish/vision run build
+# 3. Build the project (skip in CI; workflow already ran pnpm install + build)
+if (-not $env:CI) {
+    Write-Host "Installing dependencies and building..."
+    Set-Location $REPO_ROOT
+    pnpm install
+    pnpm build
+    pnpm --filter @jellyfish/vision run build
+}
 
-# 4. Copy app (exclude .git and packaging)
+# 4. Copy app (use robocopy to avoid long-path and symlink issues on Windows)
 Write-Host "Copying app..."
 $appDest = Join-Path $BUNDLE "app"
 New-Item -ItemType Directory -Force -Path $appDest | Out-Null
-Get-ChildItem -Path $REPO_ROOT -Exclude @(".git", "packaging", "node_modules\.cache") | ForEach-Object {
-    Copy-Item -Path $_.FullName -Destination $appDest -Recurse -Force
-}
-# Remove packaging from copied app if it slipped in
+$robocopyExit = 0
+robocopy $REPO_ROOT $appDest /E /XD .git packaging out /NFL /NDL /NJH /NJS /NC /NS /NP | Out-Null
+# Robocopy exit: 0=nothing copied, 1=copied, 2+ = extra; 8+ = failures. So 0-7 = OK
+if ($LASTEXITCODE -ge 8) { throw "Robocopy failed with exit $LASTEXITCODE" }
+# Remove packaging if it slipped in
 $packagingInApp = Join-Path $appDest "packaging"
 if (Test-Path $packagingInApp) { Remove-Item -Recurse -Force $packagingInApp }
 
