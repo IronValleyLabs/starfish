@@ -55,7 +55,7 @@ function getRepoRoot(): string {
   return path.resolve(__dirname, '../../..');
 }
 
-function readDataFile(filename: string): Promise<string> {
+async function readDataFile(filename: string): Promise<string> {
   const filePath = path.join(getRepoRoot(), 'data', filename);
   try {
     const raw = await fs.readFile(filePath, 'utf-8');
