@@ -44,10 +44,11 @@ else
   echo "No packaging/resources/mac/redis-server — app will use Redis from .env (e.g. Redis Cloud)."
 fi
 
-# 3. Build the project
+# 3. Build the project (including Vision/Next.js so the app can open the dashboard)
 echo "Installing dependencies and building..."
 pnpm install
 pnpm build
+pnpm --filter @jellyfish/vision run build
 
 # 4. Copy app (project) into bundle (exclude .git and packaging to save space)
 echo "Copying app..."

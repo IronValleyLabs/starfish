@@ -15,6 +15,38 @@ if (!APP_ROOT || !fs.existsSync(APP_ROOT)) {
   process.exit(1);
 }
 
+function getLogDir() {
+  if (process.platform === 'darwin') {
+    return path.join(process.env.HOME || '', 'Library', 'Logs', 'Jellyfish');
+  }
+  if (process.platform === 'win32') {
+    return path.join(process.env.APPDATA || process.env.LOCALAPPDATA || '', 'Jellyfish', 'Logs');
+  }
+  return path.join(process.env.HOME || '', '.local', 'state', 'jellyfish', 'logs');
+}
+
+let logStream = null;
+function log(msg) {
+  const line = `[${new Date().toISOString()}] ${msg}\n`;
+  if (typeof console !== 'undefined' && console.log) console.log(msg);
+  try {
+    if (!logStream) {
+      const logDir = getLogDir();
+      if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+      logStream = fs.createWriteStream(path.join(logDir, 'launcher.log'), { flags: 'a' });
+    }
+    logStream.write(line);
+  } catch (_) {}
+}
+
+function showError(title, message) {
+  log(`ERROR: ${title} - ${message}`);
+  if (process.platform === 'darwin') {
+    const safeMsg = (title + ': ' + message).replace(/\\/g, '\\\\').replace(/"/g, '\\"').substring(0, 200);
+    spawn('osascript', ['-e', 'display dialog "' + safeMsg + '" & return & return & "Log: Library/Logs/Jellyfish/launcher.log" with title "Jellyfish" with icon stop buttons {"OK"} default button "OK"'], { stdio: 'ignore' }).unref();
+  }
+}
+
 const isWin = process.platform === 'win32';
 const PROJECT = path.join(APP_ROOT, 'app');
 const NODE_BIN = path.join(APP_ROOT, 'node', isWin ? 'node.exe' : path.join('bin', 'node'));
@@ -96,16 +128,26 @@ function run(name, nodeBin, args, cwd, env) {
 }
 
 function main() {
+  log('Jellyfish launcher starting, APP_ROOT=' + APP_ROOT);
+  if (process.platform === 'darwin') {
+    spawn('osascript', ['-e', 'display notification "Abriendo el dashboard en unos segundos..." with title "Jellyfish"'], { stdio: 'ignore' }).unref();
+  }
   if (!fs.existsSync(NODE_BIN)) {
-    console.error('Bundled Node not found at', NODE_BIN);
+    showError('Node no encontrado', NODE_BIN);
     process.exit(1);
   }
   if (!fs.existsSync(PROJECT)) {
-    console.error('App bundle not found at', PROJECT);
+    showError('App no encontrada', PROJECT);
+    process.exit(1);
+  }
+  const visionNext = path.join(PROJECT, 'packages', 'vision', '.next');
+  if (!fs.existsSync(visionNext)) {
+    showError('Vision no compilada', 'Falta packages/vision/.next. Vuelve a generar la app con packaging/mac/build.sh');
     process.exit(1);
   }
 
   const env = ensureConfig();
+  log('Config loaded, starting services...');
 
   // Optional: start embedded Redis if we have it (so user doesn't need Redis Cloud)
   const hasRedis = fs.existsSync(REDIS_SERVER);
@@ -142,7 +184,12 @@ function main() {
 
   const dashboardUrl = 'http://localhost:3000';
   waitForUrl(dashboardUrl, 60000).then((ok) => {
-    if (ok) openBrowser(dashboardUrl);
+    if (ok) {
+      log('Dashboard ready, opening browser');
+      openBrowser(dashboardUrl);
+    } else {
+      showError('Dashboard no arrancó', 'El servidor no respondió en 60 s. Revisa ' + path.join(getLogDir(), 'launcher.log'));
+    }
   });
 
   function shutdown() {
@@ -155,4 +202,10 @@ function main() {
   process.on('SIGTERM', shutdown);
 }
 
-main();
+try {
+  main();
+} catch (err) {
+  const msg = err && (err.message || String(err));
+  showError('Error al iniciar', msg);
+  process.exit(1);
+}
