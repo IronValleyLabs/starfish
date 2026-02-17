@@ -23,6 +23,8 @@ const CREDENTIAL_KEYS = [
 const CREDENTIAL_KEYS_SET = new Set<string>(CREDENTIAL_KEYS)
 
 function getEnvPath(): string {
+  const configDir = process.env.JELLYFISH_CONFIG_DIR
+  if (configDir) return path.join(configDir, '.env')
   return path.resolve(process.cwd(), '..', '..', '.env')
 }
 

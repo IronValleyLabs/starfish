@@ -8,6 +8,7 @@ const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const http = require('http');
+const https = require('https');
 
 const APP_ROOT = process.env.APP_ROOT;
 if (!APP_ROOT || !fs.existsSync(APP_ROOT)) {
@@ -150,6 +151,7 @@ function main() {
   }
 
   const env = ensureConfig();
+  env.JELLYFISH_CONFIG_DIR = getConfigDir();
   log('Config loaded, starting services...');
 
   // Optional: start embedded Redis if we have it (so user doesn't need Redis Cloud)
@@ -195,6 +197,9 @@ function main() {
     }
   });
 
+  // Check for updates (non-blocking, for non-tech users: one click to download page)
+  setTimeout(() => checkForUpdates(), 8000);
+
   function shutdown() {
     children.forEach(({ name, pid }) => {
       try { process.kill(pid, 'SIGTERM'); } catch (_) {}
@@ -203,6 +208,49 @@ function main() {
   }
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
+}
+
+function parseVersion(s) {
+  const v = (s || '').replace(/^v/, '').trim();
+  const parts = v.split('.').map((n) => parseInt(n, 10) || 0);
+  return { major: parts[0] || 0, minor: parts[1] || 0, patch: parts[2] || 0 };
+}
+
+function isNewer(latest, current) {
+  const a = parseVersion(latest);
+  const b = parseVersion(current);
+  if (a.major !== b.major) return a.major > b.major;
+  if (a.minor !== b.minor) return a.minor > b.minor;
+  return a.patch > b.patch;
+}
+
+function checkForUpdates() {
+  const versionPath = path.join(APP_ROOT, 'version.txt');
+  let current = '0';
+  try {
+    if (fs.existsSync(versionPath)) current = fs.readFileSync(versionPath, 'utf8').trim().replace(/^v/, '');
+  } catch (_) {}
+  const url = 'https://api.github.com/repos/IronValleyLabs/jellyfish/releases/latest';
+  https.get(url, { headers: { 'User-Agent': 'Jellyfish-Launcher' } }, (res) => {
+    let data = '';
+    res.on('data', (ch) => { data += ch; });
+    res.on('end', () => {
+      try {
+        const j = JSON.parse(data);
+        const tag = (j.tag_name || '').replace(/^v/, '');
+        if (!tag || !isNewer(tag, current)) return;
+        const releaseUrl = j.html_url || 'https://github.com/IronValleyLabs/jellyfish/releases/latest';
+        log('Update available: ' + tag + ' (current ' + current + ')');
+        if (process.platform === 'darwin') {
+          spawn('osascript', ['-e', 'display dialog "Hay una nueva versión de Jellyfish (v' + tag + '). Pulsa OK para abrir la página de descarga." with title "Jellyfish - Actualización" with icon note buttons {"OK"} default button "OK"'], { stdio: 'ignore' }).on('close', () => {
+            openBrowser(releaseUrl);
+          });
+        } else {
+          openBrowser(releaseUrl);
+        }
+      } catch (_) {}
+    });
+  }).on('error', () => {});
 }
 
 try {

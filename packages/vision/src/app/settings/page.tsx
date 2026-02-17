@@ -254,11 +254,12 @@ export default function Settings() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [showRestartModal, setShowRestartModal] = useState(false)
   const [restartCopied, setRestartCopied] = useState(false)
+  const [appMode, setAppMode] = useState(false)
 
   useEffect(() => {
     fetch('/api/settings')
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error('Failed to load'))))
-      .then((data: { telegramToken?: string; telegramMainUserId?: string; llmProvider?: string; openrouterKey?: string; openaiKey?: string; aiModel?: string; redisHost?: string }) => {
+      .then((data: { telegramToken?: string; telegramMainUserId?: string; llmProvider?: string; openrouterKey?: string; openaiKey?: string; aiModel?: string; redisHost?: string; appMode?: boolean }) => {
         const provider = (data.llmProvider ?? 'openrouter').toLowerCase()
         setConfig({
           telegramToken: data.telegramToken ?? '',
@@ -269,6 +270,7 @@ export default function Settings() {
           aiModel: data.aiModel ?? 'anthropic/claude-3.5-sonnet',
           redisHost: data.redisHost ?? 'localhost',
         })
+        setAppMode(!!data.appMode)
       })
       .catch(() => setMessage({ type: 'error', text: 'Could not load settings' }))
       .finally(() => setLoading(false))
@@ -293,7 +295,10 @@ export default function Settings() {
       })
       const data = await res.json().catch(() => ({}))
       if (res.ok) {
-        setMessage({ type: 'success', text: data.message ?? 'Settings saved. Restart agents to apply changes.' })
+        const msg = appMode
+          ? 'Configuración guardada. Cierra Jellyfish y ábrelo de nuevo para aplicar los cambios.'
+          : (data.message ?? 'Settings saved. Restart agents to apply changes.')
+        setMessage({ type: 'success', text: msg })
       } else {
         setMessage({ type: 'error', text: data.error ?? 'Failed to save settings' })
       }
@@ -638,19 +643,21 @@ export default function Settings() {
           <div className="bg-ocean-900/50 backdrop-blur-sm border border-ocean-700/50 rounded-xl p-6">
             <h2 className="text-lg font-semibold text-ocean-100 mb-2 flex items-center gap-2">
               <RotateCw className="w-5 h-5" />
-              Restart Jellyfish
+              {appMode ? 'Aplicar cambios' : 'Restart Jellyfish'}
             </h2>
             <p className="text-sm text-ocean-400 mb-4">
-              After changing settings or .env, restart all agents so they pick up the new config.
+              {appMode
+                ? 'Después de guardar la configuración, cierra Jellyfish y ábrelo de nuevo. No hace falta usar la terminal.'
+                : 'After changing settings or .env, restart all agents so they pick up the new config.'}
             </p>
             <button
               type="button"
               onClick={() => setShowRestartModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-ocean-700/50 hover:bg-ocean-700 text-ocean-300 rounded-lg transition-colors"
-              title="Restart Jellyfish"
+              title={appMode ? 'Cómo aplicar cambios' : 'Restart Jellyfish'}
             >
               <RotateCw className="w-4 h-4" />
-              How to restart
+              {appMode ? 'Cómo aplicar los cambios' : 'How to restart'}
             </button>
           </div>
 
@@ -731,32 +738,48 @@ export default function Settings() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-sm text-ocean-300 mb-4">
-              To apply config changes or restart all agents:
-            </p>
-            <ol className="list-decimal list-inside text-sm text-ocean-300 space-y-2 mb-4">
-              <li>In the terminal where Jellyfish is running, press <kbd className="px-1.5 py-0.5 bg-ocean-800 rounded text-ocean-200">Ctrl+C</kbd></li>
-              <li>Run the command below:</li>
-            </ol>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 px-3 py-2 bg-ocean-800 rounded-lg text-ocean-200 text-sm">./start.sh</code>
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText('./start.sh').then(() => {
-                    setRestartCopied(true)
-                    setTimeout(() => setRestartCopied(false), 2000)
-                  })
-                }}
-                className="flex items-center gap-2 px-3 py-2 bg-ocean-500 hover:bg-ocean-600 text-white rounded-lg transition-colors text-sm"
-              >
-                <Copy className="w-4 h-4" />
-                {restartCopied ? 'Copied!' : 'Copy'}
-              </button>
-            </div>
-            <p className="text-xs text-ocean-500 mt-4">
-              This restarts Memory, Core, Action, Chat and Vision. Mini Jellys are respawned automatically.
-            </p>
+            {appMode ? (
+              <>
+                <p className="text-sm text-ocean-300 mb-4">
+                  Para aplicar los cambios de configuración:
+                </p>
+                <p className="text-sm text-ocean-200 mb-4">
+                  Cierra la app Jellyfish (clic derecho en el icono de Jellyfish en el Dock → Salir, o <kbd className="px-1.5 py-0.5 bg-ocean-800 rounded text-ocean-200">Cmd+Q</kbd>) y vuelve a abrirlo.
+                </p>
+                <p className="text-xs text-ocean-500">
+                  No hace falta usar la terminal.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-ocean-300 mb-4">
+                  To apply config changes or restart all agents:
+                </p>
+                <ol className="list-decimal list-inside text-sm text-ocean-300 space-y-2 mb-4">
+                  <li>In the terminal where Jellyfish is running, press <kbd className="px-1.5 py-0.5 bg-ocean-800 rounded text-ocean-200">Ctrl+C</kbd></li>
+                  <li>Run the command below:</li>
+                </ol>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 px-3 py-2 bg-ocean-800 rounded-lg text-ocean-200 text-sm">./start.sh</code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText('./start.sh').then(() => {
+                        setRestartCopied(true)
+                        setTimeout(() => setRestartCopied(false), 2000)
+                      })
+                    }}
+                    className="flex items-center gap-2 px-3 py-2 bg-ocean-500 hover:bg-ocean-600 text-white rounded-lg transition-colors text-sm"
+                  >
+                    <Copy className="w-4 h-4" />
+                    {restartCopied ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+                <p className="text-xs text-ocean-500 mt-4">
+                  This restarts Memory, Core, Action, Chat and Vision. Mini Jellys are respawned automatically.
+                </p>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -13,6 +13,8 @@ const ALLOWED_KEYS = [
 ] as const
 
 function getEnvPath(): string {
+  const configDir = process.env.JELLYFISH_CONFIG_DIR
+  if (configDir) return path.join(configDir, '.env')
   return path.resolve(process.cwd(), '..', '..', '.env')
 }
 
@@ -63,6 +65,7 @@ export async function GET() {
       openaiKey: openaiKey ? maskSecret(openaiKey) : '',
       aiModel: aiModel || 'anthropic/claude-3.5-sonnet',
       redisHost: redisHost || 'localhost',
+      appMode: !!process.env.JELLYFISH_CONFIG_DIR,
     })
   } catch (err) {
     console.error('[GET /api/settings]', err)

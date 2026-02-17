@@ -55,9 +55,14 @@ echo "Copying app..."
 rsync -a --exclude='.git' --exclude='packaging' --exclude='node_modules/.cache' "$REPO_ROOT/" "$RESOURCES/app/"
 echo "App copied."
 
-# 5. Launcher
+# 5. Launcher + version (for update check)
 mkdir -p "$RESOURCES/launcher"
 cp "$REPO_ROOT/packaging/launcher/index.js" "$RESOURCES/launcher/"
+if [ -f "$REPO_ROOT/packaging/version.txt" ]; then
+  cp "$REPO_ROOT/packaging/version.txt" "$RESOURCES/"
+else
+  echo "1.0.0" > "$RESOURCES/version.txt"
+fi
 
 # 5b. App icon (if present; create from PNG with packaging/resources/mac/make-icns.sh)
 HAS_ICON=0
