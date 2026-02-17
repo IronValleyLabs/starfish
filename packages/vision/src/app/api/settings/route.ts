@@ -4,6 +4,7 @@ import path from 'path'
 
 const ALLOWED_KEYS = [
   'TELEGRAM_BOT_TOKEN',
+  'TELEGRAM_MAIN_USER_ID',
   'LLM_PROVIDER',
   'OPENROUTER_API_KEY',
   'OPENAI_API_KEY',
@@ -47,6 +48,7 @@ export async function GET() {
     const lines = parseEnvLines(content)
 
     const telegramToken = getByKey(lines, 'TELEGRAM_BOT_TOKEN')
+    const telegramMainUserId = getByKey(lines, 'TELEGRAM_MAIN_USER_ID')
     const llmProvider = getByKey(lines, 'LLM_PROVIDER') || 'openrouter'
     const openrouterKey = getByKey(lines, 'OPENROUTER_API_KEY')
     const openaiKey = getByKey(lines, 'OPENAI_API_KEY')
@@ -55,6 +57,7 @@ export async function GET() {
 
     return Response.json({
       telegramToken: telegramToken ? maskSecret(telegramToken) : '',
+      telegramMainUserId: telegramMainUserId || '',
       llmProvider: llmProvider || 'openrouter',
       openrouterKey: openrouterKey ? maskSecret(openrouterKey) : '',
       openaiKey: openaiKey ? maskSecret(openaiKey) : '',
@@ -73,6 +76,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   let body: {
     telegramToken?: string
+    telegramMainUserId?: string
     llmProvider?: string
     openrouterKey?: string
     openaiKey?: string
@@ -85,7 +89,7 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { telegramToken, llmProvider, openrouterKey, openaiKey, aiModel, redisHost } = body
+  const { telegramToken, telegramMainUserId, llmProvider, openrouterKey, openaiKey, aiModel, redisHost } = body
   if (typeof aiModel !== 'string' || !aiModel.trim()) {
     return Response.json({ error: 'aiModel is required' }, { status: 400 })
   }
@@ -115,6 +119,7 @@ export async function POST(request: NextRequest) {
   const safe = (s: string) => s.trim().replace(/\r?\n/g, '')
   const updates: Record<string, string> = {
     TELEGRAM_BOT_TOKEN: useToken(telegramToken, getByKey(lines, 'TELEGRAM_BOT_TOKEN')),
+    TELEGRAM_MAIN_USER_ID: typeof telegramMainUserId === 'string' ? telegramMainUserId.trim() : getByKey(lines, 'TELEGRAM_MAIN_USER_ID'),
     LLM_PROVIDER: provider ? provider : (getByKey(lines, 'LLM_PROVIDER') || 'openrouter'),
     OPENROUTER_API_KEY: useToken(openrouterKey, getByKey(lines, 'OPENROUTER_API_KEY')),
     OPENAI_API_KEY: useToken(openaiKey, getByKey(lines, 'OPENAI_API_KEY')),

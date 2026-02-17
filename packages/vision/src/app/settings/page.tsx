@@ -242,6 +242,7 @@ export default function Settings() {
   const [showTokens, setShowTokens] = useState(false)
   const [config, setConfig] = useState({
     telegramToken: '',
+    telegramMainUserId: '',
     llmProvider: 'openrouter' as 'openrouter' | 'openai',
     openrouterKey: '',
     openaiKey: '',
@@ -257,10 +258,11 @@ export default function Settings() {
   useEffect(() => {
     fetch('/api/settings')
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error('Failed to load'))))
-      .then((data: { telegramToken?: string; llmProvider?: string; openrouterKey?: string; openaiKey?: string; aiModel?: string; redisHost?: string }) => {
+      .then((data: { telegramToken?: string; telegramMainUserId?: string; llmProvider?: string; openrouterKey?: string; openaiKey?: string; aiModel?: string; redisHost?: string }) => {
         const provider = (data.llmProvider ?? 'openrouter').toLowerCase()
         setConfig({
           telegramToken: data.telegramToken ?? '',
+          telegramMainUserId: data.telegramMainUserId ?? '',
           llmProvider: provider === 'openai' ? 'openai' : 'openrouter',
           openrouterKey: data.openrouterKey ?? '',
           openaiKey: data.openaiKey ?? '',
@@ -281,6 +283,7 @@ export default function Settings() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           telegramToken: config.telegramToken,
+          telegramMainUserId: config.telegramMainUserId,
           llmProvider: config.llmProvider,
           openrouterKey: config.openrouterKey,
           openaiKey: config.openaiKey,
@@ -366,6 +369,24 @@ export default function Settings() {
                 </div>
                 <p className="text-xs text-ocean-500 mt-1">
                   Get from @BotFather on Telegram. Leave masked value to keep current.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-ocean-300 mb-2">
+                  Telegram Main User ID (unified chat)
+                </label>
+                <input
+                  type="text"
+                  value={config.telegramMainUserId}
+                  onChange={(e) =>
+                    setConfig({ ...config, telegramMainUserId: e.target.value })
+                  }
+                  className="w-full px-4 py-2 bg-ocean-800/50 border border-ocean-700 rounded-lg text-ocean-100 focus:outline-none focus:border-ocean-500"
+                  placeholder="e.g. 123456789"
+                />
+                <p className="text-xs text-ocean-500 mt-1">
+                  Your Telegram user ID so your messages use the same thread as the dashboard. Get it from @userinfobot. Restart agents after saving.
                 </p>
               </div>
 

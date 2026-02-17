@@ -107,6 +107,7 @@ async function main() {
       // Unified chat: main Telegram user shares same thread as dashboard (no Redis)
       const mainTelegramId = process.env.TELEGRAM_MAIN_USER_ID?.trim();
       if (adapter.platform === 'telegram' && mainTelegramId && String(msg.userId) === mainTelegramId) {
+        console.log('[ChatAgent] Unified chat: sending to Vision for', UNIFIED_CONVERSATION_ID);
         try {
           const res = await fetch(`${VISION_CHAT_URL}/api/chat/send`, {
             method: 'POST',
@@ -122,12 +123,21 @@ async function main() {
           const output = res.ok && typeof data.output === 'string'
             ? data.output
             : (data.error ?? 'Error processing message.');
+          if (!res.ok) {
+            console.error('[ChatAgent] Unified chat: Vision returned', res.status, data);
+          } else {
+            console.log('[ChatAgent] Unified chat: Vision OK, replying to Telegram');
+          }
           await adapter.sendMessage(msg.conversationId, output);
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
+          console.error('[ChatAgent] Unified chat: fetch failed', message);
           await adapter.sendMessage(msg.conversationId, `Error: ${message}`);
         }
         return;
+      }
+      if (adapter.platform === 'telegram' && !mainTelegramId) {
+        console.log('[ChatAgent] Telegram main user not set (TELEGRAM_MAIN_USER_ID). Message goes to Redis thread', msg.conversationId);
       }
       await handler(msg);
     });

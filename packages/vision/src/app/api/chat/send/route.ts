@@ -131,6 +131,10 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: 'text is required' }, { status: 400 })
   }
 
+  if (platform === 'telegram') {
+    console.log('[Chat/send] Request from Telegram for', conversationId, 'userId', userId)
+  }
+
   // Direct sync path for dashboard chat: no Redis, same DB as Memory, call LLM from here
   try {
     const dbPath = getDbPath()
