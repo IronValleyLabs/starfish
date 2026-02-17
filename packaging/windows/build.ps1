@@ -41,6 +41,7 @@ Write-Host "Installing dependencies and building..."
 Set-Location $REPO_ROOT
 pnpm install
 pnpm build
+pnpm --filter @jellyfish/vision run build
 
 # 4. Copy app (exclude .git and packaging)
 Write-Host "Copying app..."

@@ -25,13 +25,24 @@ hdiutil create -volname Jellyfish -srcfolder packaging/out/mac/Jellyfish.app -ov
 
 ## Windows: generar carpeta + zip
 
-Desde la raíz del repo (PowerShell):
+### Si tienes Windows (PowerShell)
+
+Desde la raíz del repo:
 
 ```powershell
 .\packaging\windows\build.ps1
 ```
 
 Salida: `packaging\out\windows\Jellyfish\` y `Jellyfish-win-x64.zip`. El usuario descomprime y hace doble clic en **Run Jellyfish.bat**.
+
+### Si solo tienes Mac: usar GitHub Actions
+
+El workflow **Build Windows** construye el zip en un runner Windows de GitHub:
+
+1. Ve a **Actions** en el repo → **Build Windows** → **Run workflow**.
+2. (Opcional) En **Release tag** escribe el tag del release donde quieres subir el zip (ej. `v1.0.0`). Si lo dejas vacío, el zip solo quedará como artefacto descargable.
+3. Pulsa **Run workflow** y espera a que termine.
+4. **Descargar el zip:** en la ejecución terminada, en **Artifacts** aparece **Jellyfish-win-x64**. Descárgalo y tendrás el `.zip` dentro (o ya estará en el release si pusiste tag).
 
 ## Configuración para el usuario de la app
 
