@@ -13,3 +13,5 @@ logs/
 packages/vision/data/processes.json
 data/conversation-assignments.json
 data/main-processes.json
+packaging/out/
+packaging/cache/

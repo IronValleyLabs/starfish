@@ -43,30 +43,21 @@ echo -e "${BLUE}Checking Node.js...${NC}"
 if ! command -v node &> /dev/null; then
   echo -e "${RED}❌ Node.js not found${NC}"
   echo ""
-  echo "Please install Node.js 20 first:"
-  if [[ "$OS" == "macos" ]]; then
-    echo "  brew install node@20"
-  elif [[ "$OS" == "linux" ]]; then
-    echo "  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -"
-    echo "  sudo apt-get install -y nodejs"
-  else
-    echo "  Download from: https://nodejs.org"
-  fi
+  echo "  Paste this in the SAME terminal (installs Node):"
+  echo "  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash"
+  echo "  source ~/.nvm/nvm.sh 2>/dev/null || source ~/.bashrc; nvm install 20; nvm use 20"
+  echo "  Then run:  ./install.sh"
+  echo ""
   exit 1
 fi
 NODE_MAJOR=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
 if [ "$NODE_MAJOR" -lt 18 ]; then
-  echo -e "${RED}❌ Node.js $NODE_MAJOR is too old. Jellyfish needs Node.js 18 or 20.${NC}"
+  echo -e "${RED}❌ Node.js $NODE_MAJOR is too old. Jellyfish needs 18 or newer.${NC}"
   echo ""
-  echo "Install Node.js 20:"
-  if [[ "$OS" == "macos" ]]; then
-    echo "  brew install node@20"
-  elif [[ "$OS" == "linux" ]]; then
-    echo "  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -"
-    echo "  sudo apt-get install -y nodejs"
-  else
-    echo "  https://nodejs.org"
-  fi
+  echo "  Paste this in the SAME terminal:"
+  echo "  source ~/.nvm/nvm.sh 2>/dev/null; nvm install 20; nvm use 20"
+  echo "  Then run:  ./install.sh"
+  echo ""
   exit 1
 fi
 echo -e "${GREEN}✅ Node.js $(node -v)${NC}"
@@ -168,30 +159,12 @@ else
       echo -e "${GREEN}✅ Local Redis is running.${NC}"
     else
       echo -e "${YELLOW}Redis is installed but not running.${NC}"
-      echo "  Start it before Jellyfish:"
-      if [[ "$OS" == "macos" ]]; then
-        echo "    brew services start redis   (or: redis-server)"
-      else
-        echo "    sudo systemctl start redis   (or: redis-server)"
-      fi
+      echo "  Start it before Jellyfish (from your system's menu or services), or use Redis Cloud (option 1) instead."
     fi
   else
-    echo -e "${YELLOW}Redis is not installed. Install it so the agents can communicate:${NC}"
-    if [[ "$OS" == "macos" ]]; then
-      echo "  brew install redis"
-      echo "  Then start: brew services start redis  (or run redis-server)"
-      read -p "Install Redis now with Homebrew? (y/n) " -n 1 -r
-      echo
-      if [[ $REPLY =~ ^[Yy]$ ]]; then
-        brew install redis && echo -e "${GREEN}✅ Redis installed. Start it with: brew services start redis${NC}" || echo -e "${RED}Install failed. Run: brew install redis${NC}"
-      fi
-    elif [[ "$OS" == "linux" ]]; then
-      echo "  sudo apt-get update && sudo apt-get install -y redis-server"
-      echo "  Then start: sudo systemctl start redis"
-      echo "  (Or use Redis Cloud option 1 to avoid installing.)"
-    else
-      echo "  Install Redis from https://redis.io/docs/install/ or use Redis Cloud (option 1)."
-    fi
+    echo -e "${YELLOW}Redis is not installed.${NC}"
+    echo "  👉 Easiest: go back and choose option 1 (Redis Cloud) — no installation, just sign up and paste values in .env."
+    echo "  Or install Redis from https://redis.io/docs/install/ (follow the guide for your system, no copy-paste commands here)."
   fi
 fi
 

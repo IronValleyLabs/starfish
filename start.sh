@@ -4,10 +4,42 @@
 cd "$(dirname "$0")"
 
 # Node 18+ required
+if ! command -v node >/dev/null 2>&1; then
+  echo ""
+  echo "❌ Falta Node.js. Jellyfish lo necesita para funcionar."
+  echo ""
+  echo "  🪼 Tip de Jellyfish: Copia y pega abajo estos comandos, uno por uno (pulsa Enter después de cada uno)."
+  echo "     Cuando termine el último, copia y pega otra vez el de abajo para arrancar."
+  echo ""
+  echo "  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash"
+  echo "  source ~/.nvm/nvm.sh 2>/dev/null || source ~/.bashrc; nvm install 20; nvm use 20"
+  echo ""
+  echo "  ./start.sh"
+  echo ""
+  exit 1
+fi
 NODE_MAJOR=$(node -v 2>/dev/null | sed 's/v\([0-9]*\).*/\1/')
 if [ -n "$NODE_MAJOR" ] && [ "$NODE_MAJOR" -lt 18 ]; then
-  echo "⚠️  Node $NODE_MAJOR is too old. Jellyfish needs Node 18 or newer."
-  echo "   Run: nvm use 20   (or install Node 20 and use it)"
+  echo ""
+  echo "❌ Tu Node.js es muy antiguo (versión $NODE_MAJOR). Jellyfish necesita 18 o más nuevo."
+  echo ""
+  echo "  🪼 Tip de Jellyfish: Copia y pega abajo este comando. Luego el segundo para arrancar."
+  echo ""
+  echo "  source ~/.nvm/nvm.sh 2>/dev/null; nvm install 20; nvm use 20"
+  echo ""
+  echo "  ./start.sh"
+  echo ""
+  exit 1
+fi
+
+if ! command -v pnpm >/dev/null 2>&1; then
+  echo ""
+  echo "❌ Falta pnpm. Primero hay que ejecutar el instalador."
+  echo ""
+  echo "  🪼 Tip de Jellyfish: Copia y pega abajo este comando (instala todo lo necesario)."
+  echo ""
+  echo "  ./install.sh"
+  echo ""
   exit 1
 fi
 
@@ -33,75 +65,41 @@ redis_ok() {
 }
 
 if ! redis_ok; then
-  echo "❌ Redis is not reachable at $REDIS_HOST:$REDIS_PORT"
   echo ""
-  if [ "$(uname -s)" = "Darwin" ] && [ -z "${REDIS_PASSWORD}" ] && { [ "$REDIS_HOST" = "localhost" ] || [ "$REDIS_HOST" = "127.0.0.1" ]; }; then
-    echo "  Installing and starting Redis locally (macOS)..."
-    echo ""
-    if ! command -v redis-server >/dev/null 2>&1; then
-      if command -v brew >/dev/null 2>&1; then
-        brew install redis || { echo "  brew install redis failed."; exit 1; }
-      else
-        echo "  Homebrew (brew) is not installed. Install Redis one of these ways:"
-        echo ""
-        echo "  1) Install Homebrew first: https://brew.sh"
-        echo "     Then run: brew install redis && brew services start redis"
-        echo ""
-        echo "  2) Or use Redis Cloud (no local install): https://redis.com/try-free/"
-        echo "     Then in .env set REDIS_HOST, REDIS_PORT, REDIS_PASSWORD"
-        echo ""
-        exit 1
-      fi
-    fi
-    if command -v brew >/dev/null 2>&1; then
-      brew services start redis 2>/dev/null || true
-    fi
-    redis-server --daemonize yes 2>/dev/null || true
-    echo "  Waiting for Redis to start..."
-    sleep 2
-    if redis_ok; then
-      echo "✅ Redis is now running at $REDIS_HOST:$REDIS_PORT"
-    else
-      echo "  Could not start Redis. Run manually:"
-      if command -v brew >/dev/null 2>&1; then
-        echo "    brew install redis"
-        echo "    brew services start redis"
-      else
-        echo "    Install Homebrew: https://brew.sh  then: brew install redis && brew services start redis"
-        echo "    Or use Redis Cloud: https://redis.com/try-free/ (set REDIS_HOST, REDIS_PORT, REDIS_PASSWORD in .env)"
-      fi
-      echo ""
-      exit 1
-    fi
-  else
-    echo "  Option A — Local Redis:"
-    if [ "$(uname -s)" = "Darwin" ]; then
-      echo "    If you have Homebrew: brew install redis && brew services start redis"
-      echo "    If not: install from https://brew.sh first"
-    else
-      echo "    Linux: sudo apt-get install redis-server   (or dnf install redis)"
-      echo "    Then: sudo systemctl start redis   or   redis-server"
-    fi
-    echo ""
-    echo "  Option B — Redis Cloud (free, no local install): https://redis.com/try-free/"
-    echo "    Then in .env set REDIS_HOST, REDIS_PORT, REDIS_PASSWORD"
-    echo ""
-    echo "  Then run ./start.sh again."
-    echo ""
-    exit 1
-  fi
-else
-  echo "✅ Redis reachable at $REDIS_HOST:$REDIS_PORT"
+  echo "❌ Jellyfish necesita Redis. Usa Redis Cloud (gratis, sin instalar nada en tu PC)."
+  echo ""
+  echo "  1) Entra en https://redis.com/try-free/ y crea una base gratis. Copia: host, puerto y contraseña."
+  echo "  2) En esta misma terminal, copia y pega el comando de abajo para abrir el archivo de configuración."
+  echo ""
+  echo "  🪼 Tip de Jellyfish: Copia y pega este comando:"
+  echo ""
+  echo "  nano .env"
+  echo ""
+  echo "  3) Añade estas 3 líneas (con TUS datos del paso 1), cada una en una línea:"
+  echo "     REDIS_HOST=tu-host.redis.cloud.com"
+  echo "     REDIS_PORT=12345"
+  echo "     REDIS_PASSWORD=tu_contraseña"
+  echo "  4) Guarda: Ctrl+O, Enter. Sal: Ctrl+X."
+  echo "  5) Para arrancar Jellyfish, copia y pega:  ./start.sh"
+  echo ""
+  exit 1
 fi
+echo "✅ Redis is connected."
 
 # At least one chat platform required (Chat agent exits otherwise)
 if [ -z "${TELEGRAM_BOT_TOKEN}" ] && [ -z "${TWILIO_ACCOUNT_SID}" ] && [ -z "${SLACK_BOT_TOKEN}" ] && [ -z "${LINE_CHANNEL_ACCESS_TOKEN}" ] && [ -z "${GOOGLE_CHAT_WEBHOOK_URL}" ] && [ -z "${GOOGLE_CHAT_PROJECT_ID}" ]; then
-  echo "❌ No chat platform configured. Chat needs at least one in .env:"
+  echo "❌ Falta conectar un chat (por ejemplo Telegram) para hablar con Jellyfish."
   echo ""
-  echo "  • Telegram: TELEGRAM_BOT_TOKEN=your-bot-token"
-  echo "    Get one from https://t.me/BotFather"
+  echo "  1) En Telegram busca @BotFather, crea un bot y copia el token que te da."
+  echo "  2) En esta misma terminal, copia y pega el comando de abajo para abrir la configuración."
   echo ""
-  echo "  • Others: see .env.example (Twilio, Slack, Line, Google Chat)"
+  echo "  🪼 Tip de Jellyfish: Copia y pega este comando:"
+  echo ""
+  echo "  nano .env"
+  echo ""
+  echo "  3) Añade una línea (pega tu token):  TELEGRAM_BOT_TOKEN=tu_token_aquí"
+  echo "  4) Guarda: Ctrl+O, Enter. Sal: Ctrl+X."
+  echo "  5) Para arrancar, copia y pega:  ./start.sh"
   echo ""
   exit 1
 fi
