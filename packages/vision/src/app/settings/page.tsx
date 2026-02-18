@@ -109,6 +109,94 @@ interface TeamMember {
   role: string
 }
 
+function PairingSection() {
+  const [approved, setApproved] = useState<string[]>([])
+  const [pending, setPending] = useState<Record<string, { platform: string; userId: string; createdAt: number }>>({})
+  const [loading, setLoading] = useState(true)
+  const [approving, setApproving] = useState<string | null>(null)
+
+  const load = () => {
+    fetch('/api/pairing/list')
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error('Failed'))))
+      .then((data: { approved?: string[]; pending?: Record<string, { platform: string; userId: string; createdAt: number }> }) => {
+        setApproved(data.approved ?? [])
+        setPending(data.pending ?? {})
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    load()
+  }, [])
+
+  const handleApprove = async (code: string) => {
+    setApproving(code)
+    try {
+      const res = await fetch('/api/pairing', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code.toUpperCase() }),
+      })
+      if (res.ok) load()
+    } finally {
+      setApproving(null)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="bg-ocean-900/50 backdrop-blur-sm border border-ocean-700/50 rounded-xl p-6">
+        <h2 className="text-lg font-semibold text-ocean-100 mb-4">Pairing (Telegram)</h2>
+        <p className="text-ocean-400">Loading...</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-ocean-900/50 backdrop-blur-sm border border-ocean-700/50 rounded-xl p-6">
+      <h2 className="text-lg font-semibold text-ocean-100 mb-2">Pairing (Telegram)</h2>
+      <p className="text-sm text-ocean-400 mb-4">
+        When <code className="bg-ocean-800/50 px-1 rounded">TELEGRAM_PAIRING_ENABLED=1</code>, new Telegram users get a code and must be approved here before the bot replies. Your main user (TELEGRAM_MAIN_USER_ID) is always allowed.
+      </p>
+      {Object.keys(pending).length > 0 && (
+        <div className="mb-4">
+          <p className="text-xs text-ocean-500 mb-2">Pending codes</p>
+          <ul className="space-y-2">
+            {Object.entries(pending).map(([code, v]) => (
+              <li key={code} className="flex items-center gap-2 flex-wrap">
+                <code className="bg-ocean-800/50 px-2 py-1 rounded">{code}</code>
+                <span className="text-ocean-400 text-sm">{v.platform}:{v.userId}</span>
+                <button
+                  type="button"
+                  onClick={() => handleApprove(code)}
+                  disabled={approving === code}
+                  className="px-2 py-1 bg-ocean-500 hover:bg-ocean-600 text-white rounded text-sm disabled:opacity-50"
+                >
+                  {approving === code ? '…' : 'Approve'}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {approved.length > 0 && (
+        <div>
+          <p className="text-xs text-ocean-500 mb-2">Approved</p>
+          <ul className="text-sm text-ocean-300">
+            {approved.map((pid) => (
+              <li key={pid}><code className="bg-ocean-800/50 px-1 rounded">{pid}</code></li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {Object.keys(pending).length === 0 && approved.length === 0 && (
+        <p className="text-sm text-ocean-500">No pending or approved peers yet.</p>
+      )}
+    </div>
+  )
+}
+
 function ConversationRouting() {
   const [assignments, setAssignments] = useState<Record<string, string>>({})
   const [team, setTeam] = useState<TeamMember[]>([])
@@ -590,6 +678,9 @@ export default function Settings() {
               {saving ? 'Saving…' : 'Save Configuration'}
             </button>
           </div>
+
+          {/* Pairing (Telegram) */}
+          <PairingSection />
 
           {/* Conversation routing */}
           <ConversationRouting />

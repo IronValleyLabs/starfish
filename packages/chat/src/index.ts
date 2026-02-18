@@ -14,9 +14,11 @@ dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 dotenv.config();
 
 const RESET_REGEX = /^\/reset\s*$/i;
+const STATUS_REGEX = /^\/status\s*$/i;
 const WEBHOOK_PORT = parseInt(process.env.CHAT_WEBHOOK_PORT ?? '3010', 10);
 const UNIFIED_CONVERSATION_ID = 'web_dashboard';
 const VISION_CHAT_URL = (process.env.VISION_CHAT_URL ?? 'http://localhost:3000').replace(/\/$/, '');
+const PAIRING_ENABLED = process.env.TELEGRAM_PAIRING_ENABLED === '1' || process.env.TELEGRAM_PAIRING_ENABLED === 'true';
 
 function createMessageHandler(
   eventBus: EventBus,
@@ -139,6 +141,34 @@ async function main() {
       if (adapter.platform === 'telegram' && !mainTelegramId) {
         console.log('[ChatAgent] Telegram main user not set (TELEGRAM_MAIN_USER_ID). Message goes to Redis thread', msg.conversationId);
       }
+      if (PAIRING_ENABLED && adapter.platform === 'telegram' && String(msg.userId) !== mainTelegramId) {
+        try {
+          const pairRes = await fetch(`${VISION_CHAT_URL}/api/pairing?platform=telegram&userId=${encodeURIComponent(String(msg.userId))}`);
+          const pairData = (await pairRes.json().catch(() => ({}))) as { approved?: boolean; code?: string };
+          if (!pairData.approved && pairData.code) {
+            await adapter.sendMessage(msg.conversationId, `Pairing required. Your code: ${pairData.code}\nApprove in the dashboard (Settings → Pairing) or set TELEGRAM_MAIN_USER_ID to your user ID to skip.`);
+            return;
+          }
+        } catch {
+          // continue if Vision unreachable
+        }
+      }
+      if (STATUS_REGEX.test(msg.text.trim())) {
+        try {
+          const statusRes = await fetch(`${VISION_CHAT_URL}/api/status`);
+          const statusData = (await statusRes.json().catch(() => ({}))) as Record<string, { online?: boolean; pid?: number }>;
+          const lines = ['Status:'];
+          if (statusData._main && typeof statusData._main === 'object') {
+            for (const [name, info] of Object.entries(statusData._main)) {
+              lines.push(`  ${name}: ${info.online ? '✓' : '✗'}`);
+            }
+          }
+          await adapter.sendMessage(msg.conversationId, lines.join('\n') || 'Status: OK');
+        } catch {
+          await adapter.sendMessage(msg.conversationId, 'Status: could not reach dashboard.');
+        }
+        return;
+      }
       await handler(msg);
     });
     await adapter.start();
@@ -153,7 +183,6 @@ async function main() {
     const payload = event.payload as { conversationId?: string; result?: { output?: string }; agentId?: string };
     if (!payload.conversationId || !payload.result?.output) return;
     const cid = payload.conversationId;
-    // Scheduler runs use conversationId scheduler:mini-jelly-xxx. Optionally forward report to human.
     if (cid.startsWith('scheduler:') && schedulerReportCid) {
       const adapter = adapters.find((a) => schedulerReportCid.startsWith(a.conversationIdPrefix));
       if (adapter) {
@@ -163,6 +192,19 @@ async function main() {
         } catch (err) {
           console.error('[ChatAgent] Error sending scheduler report:', err);
         }
+      }
+      return;
+    }
+    if (cid.startsWith('internal:session:')) {
+      const requestId = cid.replace('internal:session:', '');
+      try {
+        await fetch(`${VISION_CHAT_URL}/api/sessions/response`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ requestId, output: payload.result.output }),
+        });
+      } catch (err) {
+        console.error('[ChatAgent] Failed to store session response', requestId, err);
       }
       return;
     }

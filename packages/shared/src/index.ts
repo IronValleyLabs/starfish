@@ -23,7 +23,7 @@ export interface Event {
 
 // Specific payload types
 export interface MessageReceivedPayload extends EventPayload {
-  platform: 'telegram' | 'whatsapp' | 'line' | 'google-chat' | 'slack' | 'discord';
+  platform: 'telegram' | 'whatsapp' | 'line' | 'google-chat' | 'slack' | 'discord' | 'internal';
   userId: string;
   conversationId: string;
   text: string;

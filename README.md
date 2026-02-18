@@ -67,6 +67,8 @@ Edit `.env`. Main variables:
 |----------|-------------|
 | **Chat** (set at least one) | |
 | `TELEGRAM_BOT_TOKEN` | Telegram bot token from [@BotFather](https://t.me/BotFather) |
+| `TELEGRAM_MAIN_USER_ID` | Your Telegram user ID for unified chat (same thread as dashboard). Set to skip pairing. |
+| `TELEGRAM_PAIRING_ENABLED` | `1`: new Telegram users get a pairing code; approve in Settings → Pairing before the bot replies. |
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM` | WhatsApp via Twilio; webhook: `http(s)://your-host:3010/webhook/whatsapp` |
 | `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN` | Slack (Socket Mode) |
 | `LINE_CHANNEL_ACCESS_TOKEN`, `LINE_CHANNEL_SECRET` | Line; webhook: `http(s)://your-host:3010/webhook/line` |
@@ -141,7 +143,7 @@ This builds packages and starts:
 - **Gallery** — Predefined AI roles; add to team with optional job description
 - **Mini Jelly** (`/mini/[id]`) — Edit job description, goals, KPIs, status (active/paused), **per-agent dashboard login** (URL, email, password for browser_visit), wake on signals, skills
 - **Live Logs** — Real-time event stream from Redis (SSE)
-- **Settings** — API keys, model, Redis; **Dashboard / browser login** (global); **Open visible Chrome for the agent**; prompt editors (Core, Memory, Action)
+- **Settings** — API keys, model, Redis; **Pairing (Telegram)** (approve users by code); **Dashboard / browser login** (global); **Open visible Chrome for the agent**; prompt editors (Core, Memory, Action)
 
 ---
 
@@ -160,6 +162,23 @@ This builds packages and starts:
 | GET | `/api/agent-browser-credentials?agentId=` | Browser login for an agent (per-agent or global); used by Action |
 | POST | `/api/trigger` | Wake agents (`agentId` or `all: true`, optional `signals`) |
 | GET | `/api/signals` | Cached trends/signals (for watcher and agents) |
+| GET | `/api/pairing?platform=&userId=` | Check if user is approved; if not, returns pairing code. Used by Chat. |
+| PATCH | `/api/pairing` | Approve by `code` or by `platform`+`userId`. |
+| GET | `/api/pairing/list` | List pending codes and approved peers (dashboard). |
+| GET | `/api/sessions` | List active sessions (conversationId → agentId) for agent-to-agent. |
+| POST | `/api/sessions/response` | Store session response (internal). |
+| GET | `/api/sessions/response?requestId=` | Poll for session response (Action after sessions_send). |
+
+---
+
+## Autonomy: pairing, sessions, mesh
+
+- **DM pairing (Telegram)** — Set `TELEGRAM_PAIRING_ENABLED=1`. New users get a code; approve in **Settings → Pairing**. Your main user (`TELEGRAM_MAIN_USER_ID`) is always allowed. See [docs/autonomy-pairing-sessions.md](docs/autonomy-pairing-sessions.md).
+- **Agent-to-agent** — Agents can list sessions (`sessions_list`) and send a task to another agent (`sessions_send`). The receiver runs and returns the result.
+- **Plan + execute (mesh)** — For big goals (e.g. “organize my week in social”), the agent can output `execute_plan` with a list of steps; each step runs in order (same agent or via sessions_send).
+- **Chat commands** — `/status`: quick process status (memory, core, action, etc.). `/reset`: unassign conversation. `/mesh &lt;goal&gt;` is handled as a normal message; the agent may reply with an execute_plan.
+
+Full detail: **[docs/autonomy-pairing-sessions.md](docs/autonomy-pairing-sessions.md)**.
 
 ---
 
@@ -217,6 +236,7 @@ Once those are in place, you could give the Social Media Manager the Instagram a
 ## Documentation
 
 - **[docs/](docs/README.md)** — Per-package configuration (Memory, Core, Chat, Action, Vision): env vars, events, and commands.
+- **[docs/autonomy-pairing-sessions.md](docs/autonomy-pairing-sessions.md)** — DM pairing, agent-to-agent (sessions), plan+execute (mesh), and chat commands (/status, /reset).
 
 ---
 

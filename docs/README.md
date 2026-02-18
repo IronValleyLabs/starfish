@@ -2,6 +2,8 @@
 
 Per-package configuration and quick reference.
 
+- **[Autonomy: pairing, sessions, mesh](autonomy-pairing-sessions.md)** — DM pairing (Telegram), agent-to-agent (sessions_list / sessions_send), plan+execute (mesh), /status and /reset.
+
 ## System packages
 
 | Package | Description | Config |
@@ -36,6 +38,9 @@ pnpm --filter @jellyfish/vision dev
 
 # Stop agents
 ./stop.sh
+
+# Run tests (pairing, sessions, chat commands, mesh)
+pnpm test
 ```
 
 ## Dashboard APIs (Vision)

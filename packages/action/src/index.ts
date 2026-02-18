@@ -1,4 +1,5 @@
 import path from 'path';
+import crypto from 'crypto';
 import { EventBus, MetricsCollector } from '@jellyfish/shared';
 import { BashExecutor } from './bash-executor';
 import { WebSearcher, looksLikeUrl } from './web-searcher';
@@ -33,6 +34,8 @@ interface IntentPayload {
     name?: string;
     description?: string;
     instructions?: string;
+    toAgentId?: string;
+    steps?: string[];
   };
   conversationId?: string;
   agentId?: string;
@@ -171,6 +174,92 @@ class ActionAgent {
               result = { output: '', error: 'write_file requires params.filePath (e.g. docs/vision.md or data/agent-knowledge.md).' };
             } else {
               result = await this.writeFileExecutor.execute(filePath, content);
+            }
+            break;
+          }
+          case 'sessions_list': {
+            try {
+              const res = await fetch(`${VISION_URL}/api/sessions`);
+              const sessions = (await res.json().catch(() => [])) as Array<{ conversationId: string; agentId: string }>;
+              result = { output: JSON.stringify(sessions, null, 2) };
+            } catch (e) {
+              result = { output: '', error: e instanceof Error ? e.message : 'Failed to fetch sessions' };
+            }
+            break;
+          }
+          case 'sessions_send': {
+            const toAgentId = payload.params?.toAgentId?.trim();
+            const text = payload.params?.text?.trim();
+            if (!toAgentId || !text) {
+              result = { output: '', error: 'sessions_send requires params.toAgentId and params.text' };
+            } else {
+              const requestId = crypto.randomUUID();
+              const convId = `internal:session:${requestId}`;
+              const targetId = toAgentId.startsWith('mini-jelly-') ? toAgentId : `mini-jelly-${toAgentId}`;
+              await this.eventBus.publish('message.received', {
+                platform: 'internal',
+                userId: agentId,
+                conversationId: convId,
+                text,
+                targetAgentId: targetId,
+              });
+              const deadline = Date.now() + 90000;
+              const pollMs = 2000;
+              let output: string | null = null;
+              while (Date.now() < deadline) {
+                await new Promise((r) => setTimeout(r, pollMs));
+                try {
+                  const rres = await fetch(`${VISION_URL}/api/sessions/response?requestId=${encodeURIComponent(requestId)}`);
+                  const data = (await rres.json()) as { output?: string | null };
+                  if (data.output != null) {
+                    output = data.output;
+                    break;
+                  }
+                } catch {
+                  // continue polling
+                }
+              }
+              result = { output: output ?? 'No response from agent (timeout).' };
+            }
+            break;
+          }
+          case 'execute_plan': {
+            const steps = payload.params?.steps;
+            if (!Array.isArray(steps) || steps.length === 0) {
+              result = { output: '', error: 'execute_plan requires params.steps (array of step descriptions)' };
+            } else {
+              const outputs: string[] = [];
+              for (let i = 0; i < steps.length; i++) {
+                const step = String(steps[i]).trim();
+                if (!step) continue;
+                const requestId = crypto.randomUUID();
+                const convId = `internal:session:${requestId}`;
+                await this.eventBus.publish('message.received', {
+                  platform: 'internal',
+                  userId: agentId,
+                  conversationId: convId,
+                  text: step,
+                  targetAgentId: agentId,
+                });
+                const deadline = Date.now() + 90000;
+                const pollMs = 2000;
+                let stepOutput: string | null = null;
+                while (Date.now() < deadline) {
+                  await new Promise((r) => setTimeout(r, pollMs));
+                  try {
+                    const rres = await fetch(`${VISION_URL}/api/sessions/response?requestId=${encodeURIComponent(requestId)}`);
+                    const data = (await rres.json()) as { output?: string | null };
+                    if (data.output != null) {
+                      stepOutput = data.output;
+                      break;
+                    }
+                  } catch {
+                    // continue
+                  }
+                }
+                outputs.push(`Step ${i + 1}: ${stepOutput ?? 'timeout'}`);
+              }
+              result = { output: outputs.join('\n\n') };
             }
             break;
           }

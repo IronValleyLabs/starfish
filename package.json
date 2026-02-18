@@ -3,11 +3,14 @@
   "private": true,
   "scripts": {
     "build": "pnpm --filter @jellyfish/shared run build && pnpm -r --filter '@jellyfish/core' --filter '@jellyfish/memory' --filter '@jellyfish/chat' --filter '@jellyfish/action' --filter '@jellyfish/scheduler' run build",
-    "dev": "pnpm --filter './packages/*' dev"
+    "dev": "pnpm --filter './packages/*' dev",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
-    "typescript": "^5.3.3",
+    "@types/node": "^20.11.20",
     "ts-node": "^10.9.2",
-    "@types/node": "^20.11.20"
+    "typescript": "^5.3.3",
+    "vitest": "^2.1.9"
   }
 }
